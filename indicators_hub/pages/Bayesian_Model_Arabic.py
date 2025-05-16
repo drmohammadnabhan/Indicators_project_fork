@@ -21,9 +21,9 @@ LANGUAGES = {
     "sec1_intro_md": {"en": """This proposal outlines an **Adaptive Bayesian Estimation framework** designed to enhance the process of gathering and analyzing survey data for Hajj pilgrim satisfaction and the assessment of services provided by various companies.
 
 The current practice of developing satisfaction metrics month over month faces complexities, such as delays in pilgrim arrivals or non-uniformity across different months, making it difficult to consistently achieve high-confidence and low-error confidence intervals for key indicators. This proposal aims to introduce a more dynamic, efficient, and robust methodology.
-    """, "ar": """يحدد هذا المقترح إطارًا لـ **تقدير Bayesian التكيفي** مصممًا لتعزيز عملية جمع وتحليل بيانات الاستطلاع الخاصة برضا حجاج بيت الله الحرام وتقييم الخدمات المقدمة من مختلف الشركات.
+    """, "ar": """<div dir='rtl'>يحدد هذا المقترح إطارًا لـ **تقدير Bayesian التكيفي** مصممًا لتعزيز عملية جمع وتحليل بيانات الاستطلاع الخاصة برضا حجاج بيت الله الحرام وتقييم الخدمات المقدمة من مختلف الشركات.
 
-تواجه الممارسة الحالية المتمثلة في تطوير مقاييس الرضا شهرًا بعد شهر تعقيدات، مثل التأخير في وصول الحجاج أو عدم الانتظام عبر الأشهر المختلفة، مما يجعل من الصعب تحقيق فترات ثقة عالية الدقة ومنخفضة الخطأ للمؤشرات الرئيسية بشكل مستمر. يهدف هذا المقترح إلى تقديم منهجية أكثر ديناميكية وكفاءة وقوة.
+تواجه الممارسة الحالية المتمثلة في تطوير مقاييس الرضا شهرًا بعد شهر تعقيدات، مثل التأخير في وصول الحجاج أو عدم الانتظام عبر الأشهر المختلفة، مما يجعل من الصعب تحقيق فترات ثقة عالية الدقة ومنخفضة الخطأ للمؤشرات الرئيسية بشكل مستمر. يهدف هذا المقترح إلى تقديم منهجية أكثر ديناميكية وكفاءة وقوة.</div>
     """},
     "sec1_obj_subheader": {"en": "1.1. Primary Objectives", "ar": "١.١. الأهداف الأساسية"},
     "sec1_obj_md": {"en": """
@@ -35,7 +35,7 @@ The core objectives of implementing this adaptive Bayesian framework are:
 * **Incorporate Prior Knowledge:** To formally integrate knowledge from previous survey waves, historical data, or expert opinions into the estimation process, leading to more informed starting points and potentially faster convergence to precise estimates.
 * **Adapt to Changing Conditions:** To develop a system that can adapt to changes in satisfaction levels or service provider performance over time, for instance, by adjusting the influence of older data.
 * **Enhanced Subgroup Analysis:** To facilitate more reliable analysis of specific pilgrim subgroups or service aspects by adaptively ensuring sufficient data is collected for these segments.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 الأهداف الأساسية لتطبيق إطار Bayesian التكيفي هي:
 
 * **تحقيق الدقة المطلوبة بكفاءة:** الحصول على مقاييس الرضا وتقييمات مقدمي الخدمات بمستويات دقة محددة مسبقًا (أي فترات موثوقية ضيقة عند مستوى ثقة معين) باستخدام أحجام عينات مُحسَّنة.
@@ -43,44 +43,44 @@ The core objectives of implementing this adaptive Bayesian framework are:
 * **تقديرات موثوقة وفي الوقت المناسب:** تزويد صانعي القرار بتقديرات أكثر موثوقية من الناحية الإحصائية وفي الوقت المناسب، مما يسمح باستجابات أسرع للقضايا الناشئة أو الاتجاهات في رضا الحجاج.
 * **دمج المعرفة المسبقة:** دمج المعرفة من موجات الاستطلاع السابقة أو البيانات التاريخية أو آراء الخبراء رسميًا في عملية التقدير، مما يؤدي إلى نقاط انطلاق أكثر استنارة واحتمال تقارب أسرع للتقديرات الدقيقة.
 * **التكيف مع الظروف المتغيرة:** تطوير نظام يمكنه التكيف مع التغيرات في مستويات الرضا أو أداء مقدمي الخدمات بمرور الوقت، على سبيل المثال، عن طريق تعديل تأثير البيانات القديمة.
-* **تحليل محسن للمجموعات الفرعية:** تسهيل تحليل أكثر موثوقية لمجموعات فرعية محددة من الحجاج أو جوانب الخدمة من خلال ضمان جمع بيانات كافية لهذه الشرائح بشكل تكيفي.
+* **تحليل محسن للمجموعات الفرعية:** تسهيل تحليل أكثر موثوقية لمجموعات فرعية محددة من الحجاج أو جوانب الخدمة من خلال ضمان جمع بيانات كافية لهذه الشرائح بشكل تكيفي.</div>
     """},
 
     # Section 2
     "sec2_title": {"en": "2. Challenges Addressed by this Methodology", "ar": "٢. التحديات التي تعالجها هذه المنهجية"},
     "sec2_intro_md": {"en": "The proposed Bayesian adaptive estimation framework directly addresses several key challenges currently faced in the Hajj survey process:",
-                      "ar": "يعالج إطار تقدير Bayesian التكيفي المقترح بشكل مباشر العديد من التحديات الرئيسية التي تواجه حاليًا في عملية استطلاع الحج:"},
+                      "ar": "<div dir='rtl'>يعالج إطار تقدير Bayesian التكيفي المقترح بشكل مباشر العديد من التحديات الرئيسية التي تواجه حاليًا في عملية استطلاع الحج:</div>"},
     "sec2_challenge1_header": {"en": "Difficulty in Obtaining Stable Confidence Intervals", "ar": "صعوبة الحصول على فترات ثقة مستقرة"},
     "sec2_challenge1_md": {"en": """
 * **Challenge:** Operational complexities like staggered pilgrim arrivals, varying visa availability periods, and diverse pilgrim schedules lead to non-uniform data collection across time. This makes it hard to achieve consistent and narrow confidence intervals for satisfaction indicators using fixed sampling plans.
 * **Bayesian Solution:** The adaptive nature allows sampling to continue until a desired precision (credible interval width) is met, regardless of initial data flow irregularities. Estimates stabilize as more data is incorporated.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **التحدي:** التعقيدات التشغيلية مثل وصول الحجاج المتدرج، وفترات توفر التأشيرات المتفاوتة، وجداول الحجاج المتنوعة تؤدي إلى جمع بيانات غير منتظم عبر الزمن. هذا يجعل من الصعب تحقيق فترات ثقة متسقة وضيقة لمؤشرات الرضا باستخدام خطط أخذ عينات ثابتة.
-* **حل Bayesian:** تسمح الطبيعة التكيفية باستمرار أخذ العينات حتى يتم تحقيق الدقة المطلوبة (عرض فترة الموثوقية)، بغض النظر عن عدم انتظام تدفق البيانات الأولي. تستقر التقديرات مع دمج المزيد من البيانات.
+* **حل Bayesian:** تسمح الطبيعة التكيفية باستمرار أخذ العينات حتى يتم تحقيق الدقة المطلوبة (عرض فترة الموثوقية)، بغض النظر عن عدم انتظام تدفق البيانات الأولي. تستقر التقديرات مع دمج المزيد من البيانات.</div>
     """},
     "sec2_challenge2_header": {"en": "Inefficiency of Fixed Sample Size Approaches", "ar": "عدم كفاءة مناهج حجم العينة الثابت"},
     "sec2_challenge2_md": {"en": """
 * **Challenge:** Predetermined sample sizes often lead to either over-sampling (wasting resources when satisfaction is homogenous or already precisely estimated) or under-sampling (resulting in inconclusive results or wide confidence intervals).
 * **Bayesian Solution:** Sampling effort is guided by the current level of uncertainty. If an estimate is already precise, sampling can be reduced or stopped for that segment. If it's imprecise, targeted additional sampling is guided by the model.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **التحدي:** غالبًا ما تؤدي أحجام العينات المحددة مسبقًا إما إلى الإفراط في أخذ العينات (إهدار الموارد عندما يكون الرضا متجانسًا أو تم تقديره بدقة بالفعل) أو نقص أخذ العينات (مما يؤدي إلى نتائج غير حاسمة أو فترات ثقة واسعة).
-* **حل Bayesian:** يتم توجيه جهد أخذ العينات حسب المستوى الحالي من عدم اليقين. إذا كان التقدير دقيقًا بالفعل، فيمكن تقليل أخذ العينات أو إيقافه لتلك الشريحة. إذا كان غير دقيق، يتم توجيه أخذ عينات إضافية مستهدفة بواسطة النموذج.
+* **حل Bayesian:** يتم توجيه جهد أخذ العينات حسب المستوى الحالي من عدم اليقين. إذا كان التقدير دقيقًا بالفعل، فيمكن تقليل أخذ العينات أو إيقافه لتلك الشريحة. إذا كان غير دقيق، يتم توجيه أخذ عينات إضافية مستهدفة بواسطة النموذج.</div>
     """},
     "sec2_challenge3_header": {"en": "Incorporation of Prior Knowledge and Historical Data", "ar": "دمج المعرفة المسبقة والبيانات التاريخية"},
     "sec2_challenge3_md": {"en": """
 * **Challenge:** Valuable insights from past surveys or existing knowledge about certain pilgrim groups or services are often not formally used to inform current survey efforts or baseline estimates.
 * **Bayesian Solution:** Priors provide a natural mechanism to incorporate such information. This can lead to more accurate estimates, especially when current data is sparse, and can make the learning process more efficient.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **التحدي:** غالبًا لا يتم استخدام الرؤى القيمة من الاستطلاعات السابقة أو المعرفة الحالية حول مجموعات معينة من الحجاج أو الخدمات رسميًا لإبلاغ جهود الاستطلاع الحالية أو التقديرات الأساسية.
-* **حل Bayesian:** توفر التوزيعات المسبقة (Priors) آلية طبيعية لدمج هذه المعلومات. يمكن أن يؤدي ذلك إلى تقديرات أكثر دقة، خاصة عندما تكون البيانات الحالية متفرقة، ويمكن أن يجعل عملية التعلم أكثر كفاءة.
+* **حل Bayesian:** توفر التوزيعات المسبقة (Priors) آلية طبيعية لدمج هذه المعلومات. يمكن أن يؤدي ذلك إلى تقديرات أكثر دقة، خاصة عندما تكون البيانات الحالية متفرقة، ويمكن أن يجعل عملية التعلم أكثر كفاءة.</div>
     """},
     "sec2_challenge4_header": {"en": "Assessing Service Provider Performance with Evolving Data", "ar": "تقييم أداء مقدمي الخدمات مع تطور البيانات"},
     "sec2_challenge4_md": {"en": """
 * **Challenge:** Evaluating service providers is difficult when their performance might change over time, or when initial data for a new provider is limited. Deciding when enough data has been collected to make a fair assessment is crucial.
 * **Bayesian Solution:** The framework can be designed to track performance iteratively. For new providers, it starts with less informative priors and builds evidence. For existing ones, it can incorporate past performance, potentially with mechanisms to down-weight older data if performance is expected to evolve (see Section 3.5).
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **التحدي:** يصعب تقييم مقدمي الخدمات عندما قد يتغير أداؤهم بمرور الوقت، أو عندما تكون البيانات الأولية لمقدم خدمة جديد محدودة. يعد تحديد متى تم جمع بيانات كافية لإجراء تقييم عادل أمرًا بالغ الأهمية.
-* **حل Bayesian:** يمكن تصميم الإطار لتتبع الأداء بشكل متكرر. بالنسبة لمقدمي الخدمات الجدد، يبدأ بتوزيعات مسبقة أقل إفادة ويبني الأدلة. بالنسبة للموجودين، يمكنه دمج الأداء السابق، مع آليات محتملة لتقليل وزن البيانات القديمة إذا كان من المتوقع أن يتطور الأداء (انظر القسم ٣.٥).
+* **حل Bayesian:** يمكن تصميم الإطار لتتبع الأداء بشكل متكرر. بالنسبة لمقدمي الخدمات الجدد، يبدأ بتوزيعات مسبقة أقل إفادة ويبني الأدلة. بالنسبة للموجودين، يمكنه دمج الأداء السابق، مع آليات محتملة لتقليل وزن البيانات القديمة إذا كان من المتوقع أن يتطور الأداء (انظر القسم ٣.٥).</div>
     """},
     "sec2_challenge5_header": {"en": "Why Not Just Combine All Data (Data Lumping)?", "ar": "لماذا لا نكتفي بدمج جميع البيانات (تجميع البيانات)؟"},
     "sec2_challenge5_md": {"en": """
@@ -101,7 +101,7 @@ While seemingly straightforward, this 'data lumping' approach has significant dr
 4.  Guide sampling efficiently towards achieving specific precision targets.
 
 Simple data lumping misses these crucial adaptive and structural advantages, potentially leading to less reliable or even misleading conclusions in dynamic environments.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 سؤال شائع هو: "كيف يختلف هذا عن مجرد تجميع البيانات القديمة مع البيانات المكتسبة حديثًا وحساب فترة ثقة جديدة بناءً
 على مجموعة البيانات المجمعة؟"
 
@@ -119,13 +119,13 @@ Simple data lumping misses these crucial adaptive and structural advantages, pot
 ٣. إدارة تأثير البيانات القديمة بشكل منهجي للتكيف مع الظروف المتغيرة.
 ٤. توجيه أخذ العينات بكفاءة نحو تحقيق أهداف دقة محددة.
 
-يفتقد تجميع البيانات البسيط هذه المزايا التكيفية والهيكلية الحاسمة، مما قد يؤدي إلى استنتاجات أقل موثوقية أو حتى مضللة في البيئات الديناميكية.
+يفتقد تجميع البيانات البسيط هذه المزايا التكيفية والهيكلية الحاسمة، مما قد يؤدي إلى استنتاجات أقل موثوقية أو حتى مضللة في البيئات الديناميكية.</div>
     """},
 
     # Section 3
     "sec3_title": {"en": "3. Core Methodology: Bayesian Adaptive Estimation", "ar": "٣. المنهجية الأساسية: تقدير Bayesian التكيفي"},
     "sec3_intro_md": {"en": "The Bayesian adaptive estimation framework is an iterative process that leverages Bayes' theorem to update our beliefs about pilgrim satisfaction or service performance as new survey data is collected. This allows for dynamic adjustments to the sampling strategy.",
-                       "ar": "إطار تقدير Bayesian التكيفي هو عملية تكرارية تستفيد من نظرية Bayes لتحديث معتقداتنا حول رضا الحجاج أو أداء الخدمة عند جمع بيانات استطلاع جديدة. هذا يسمح بإجراء تعديلات ديناميكية على استراتيجية أخذ العينات."},
+                       "ar": "<div dir='rtl'>إطار تقدير Bayesian التكيفي هو عملية تكرارية تستفيد من نظرية Bayes لتحديث معتقداتنا حول رضا الحجاج أو أداء الخدمة عند جمع بيانات استطلاع جديدة. هذا يسمح بإجراء تعديلات ديناميكية على استراتيجية أخذ العينات.</div>"},
     "sec3_concepts_subheader": {"en": "3.1. Fundamental Concepts", "ar": "٣.١. المفاهيم الأساسية"},
     "sec3_concepts_md": {"en": r"""
 At its heart, Bayesian inference combines prior knowledge with observed data to arrive at an updated understanding, known as the posterior distribution.
@@ -137,7 +137,7 @@ At its heart, Bayesian inference combines prior knowledge with observed data to 
     Where $P(D)$ is the marginal likelihood of the data, acting as a normalizing constant. In practice, we often focus on the proportionality:
     $$ P(\theta|D) \propto P(D|\theta) \times P(\theta) $$
 * **Credible Interval:** In Bayesian statistics, a credible interval is a range of values that contains the parameter $\theta$ with a certain probability (e.g., 95%). This is a direct probabilistic statement about the parameter, unlike the frequentist confidence interval.
-    """, "ar": r"""
+    """, "ar": r"""<div dir='rtl'>
 في جوهره، يجمع استدلال Bayesian بين المعرفة المسبقة والبيانات المرصودة للوصول إلى فهم محدث، يُعرف بالتوزيع اللاحق.
 
 * **التوزيع المسبق ($P(\theta)$):** يمثل هذا اعتقادنا الأولي حول معلمة $\theta$ (على سبيل المثال، نسبة الحجاج الراضين) *قبل* ملاحظة البيانات الجديدة. يمكن أن يستند إلى البيانات التاريخية أو رأي الخبراء أو أن يكون "غير إعلامي" بشكل متعمد إذا أردنا أن تتحدث البيانات عن نفسها.
@@ -146,7 +146,7 @@ At its heart, Bayesian inference combines prior knowledge with observed data to 
     $$ P(\theta|D) = \frac{P(D|\theta) \times P(\theta)}{P(D)} $$
     حيث $P(D)$ هو الإمكان الهامشي للبيانات، ويعمل كثابت تسوية. في الممارسة العملية، غالبًا ما نركز على التناسب:
     $$ P(\theta|D) \propto P(D|\theta) \times P(\theta) $$
-* **فترة الموثوقية:** في إحصاءات Bayesian، فترة الموثوقية هي نطاق من القيم يحتوي على المعلمة $\theta$ باحتمال معين (على سبيل المثال، ٩٥٪). هذا بيان احتمالي مباشر حول المعلمة، على عكس فترة الثقة الإحصائية التقليدية.
+* **فترة الموثوقية:** في إحصاءات Bayesian، فترة الموثوقية هي نطاق من القيم يحتوي على المعلمة $\theta$ باحتمال معين (على سبيل المثال، ٩٥٪). هذا بيان احتمالي مباشر حول المعلمة، على عكس فترة الثقة الإحصائية التقليدية.</div>
     """},
     "sec3_iterative_subheader": {"en": "3.2. The Iterative Process", "ar": "٣.٢. العملية التكرارية"},
     "sec3_iterative_md": {"en": """
@@ -174,7 +174,7 @@ The adaptive methodology follows these steps:
         * Return to Step 3 (Posterior Update), using the current posterior as the new prior for the next update.
 
 This cycle continues until the desired precision is achieved for all key indicators or available resources for the current wave are exhausted.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 تتبع المنهجية التكيفية هذه الخطوات:
 ١. **التهيئة:**
     * تحديد المعلمة (المعلمات) ذات الأهمية (على سبيل المثال، الرضا عن السكن، الطعام، الخدمات اللوجستية لشركة معينة).
@@ -198,11 +198,8 @@ This cycle continues until the desired precision is achieved for all key indicat
         * جمع الدفعة الإضافية من ردود الاستطلاع.
         * العودة إلى الخطوة ٣ (تحديث التوزيع اللاحق)، باستخدام التوزيع اللاحق الحالي كتوزيع مسبق جديد للتحديث التالي.
 
-تستمر هذه الدورة حتى يتم تحقيق الدقة المطلوبة لجميع المؤشرات الرئيسية أو استنفاد الموارد المتاحة للموجة الحالية.
+تستمر هذه الدورة حتى يتم تحقيق الدقة المطلوبة لجميع المؤشرات الرئيسية أو استنفاد الموارد المتاحة للموجة الحالية.</div>
     """},
-    # Placeholder for local image:
-    # "sec3_image_caption": {"en": "Conceptual Flow of Bayesian Updating (Add your local image here)",
-    #                        "ar": "التدفق المفاهيمي لتحديث Bayesian (أضف صورتك المحلية هنا)"},
     "sec3_modeling_subheader": {"en": "3.3. Modeling Satisfaction (e.g., using Beta-Binomial Model)",
                                 "ar": "٣.٣. نمذجة الرضا (على سبيل المثال، باستخدام نموذج Beta-Binomial)"},
     "sec3_modeling_md": {"en": r"""
@@ -224,7 +221,7 @@ For satisfaction metrics that are proportions (e.g., percentage of pilgrims rati
 * **Credible Interval:** The $(1-\gamma)\%$ credible interval for $\theta$ is typically computed numerically from the posterior Beta distribution $Beta(\alpha_{post}, \beta_{post})$ using its cumulative distribution function (CDF) or percent point function (PPF). For example, a 95% credible interval provides a range within which $\theta$ lies with 95% probability, given the data and the prior. This is calculated in Python using `scipy.stats.beta.interval(0.95, alpha_posterior, beta_posterior)`.
 
 This conjugacy simplifies calculations significantly.
-    """, "ar": r"""
+    """, "ar": r"""<div dir='rtl'>
 بالنسبة لمقاييس الرضا التي هي عبارة عن نسب (على سبيل المثال، النسبة المئوية للحجاج الذين يقيمون خدمة بأنها "مرضية" أو "مرضية للغاية")، فإن نموذج Beta-Binomial مناسب جدًا ويستخدم بشكل شائع.
 
 * **المعلمة ذات الأهمية ($\theta$):** النسبة الأساسية الحقيقية للحجاج الراضين.
@@ -242,7 +239,7 @@ This conjugacy simplifies calculations significantly.
     $$ E[\theta | D] = \frac{\alpha_{post}}{\alpha_{post} + \beta_{post}} = \frac{\alpha_0 + k}{\alpha_0 + k + \beta_0 + n - k} $$
 * **فترة الموثوقية:** عادةً ما يتم حساب فترة الموثوقية $(1-\gamma)\%$ لـ $\theta$ عدديًا من توزيع Beta اللاحق $Beta(\alpha_{post}, \beta_{post})$ باستخدام دالة التوزيع التراكمي (CDF) أو دالة نقطة النسبة المئوية (PPF). على سبيل المثال، توفر فترة موثوقية بنسبة ٩٥٪ نطاقًا يقع ضمنه $\theta$ باحتمال ٩٥٪، بالنظر إلى البيانات والتوزيع المسبق. يتم حساب ذلك في Python باستخدام `scipy.stats.beta.interval(0.95, alpha_posterior, beta_posterior)`.
 
-هذا الترافق يبسط الحسابات بشكل كبير.
+هذا الترافق يبسط الحسابات بشكل كبير.</div>
     """},
     "sec3_sampling_logic_subheader": {"en": "3.4. Adaptive Sampling Logic & Determining Additional Sample Size",
                                       "ar": "٣.٤. منطق أخذ العينات التكيفي وتحديد حجم العينة الإضافي"},
@@ -261,7 +258,7 @@ The decision to continue sampling is based on whether the current credible inter
     4.  **Pragmatic Batching:** Collect data in smaller, manageable batches (e.g., 30-50 responses). After each batch, reassess precision. This is often a practical starting point.
 
 The tool should aim to provide guidance on a reasonable next batch size based on the current uncertainty and the distance to the target precision.
-    """, "ar": r"""
+    """, "ar": r"""<div dir='rtl'>
 يعتمد قرار مواصلة أخذ العينات على ما إذا كانت فترة الموثوقية الحالية لـ $\theta$ تفي بالدقة المطلوبة.
 
 * **قاعدة الإيقاف:** إيقاف أخذ العينات لمقياس معين عندما (لفترة موثوقية $(1-\gamma)\%$ $[L, U]$):
@@ -275,7 +272,7 @@ The tool should aim to provide guidance on a reasonable next batch size based on
     ٣. **تحليل Bayesian التسلسلي:** يمكن تكييف طرق أكثر رسمية من تحليل Bayesian التسلسلي (على سبيل المثال، اختبارات نسبة الاحتمالية التسلسلية لـ Bayesian - BSPRTs)، على الرغم من أنها قد تكون أكثر تعقيدًا في التنفيذ الأولي.
     ٤. **التجميع العملي:** جمع البيانات في دفعات أصغر يمكن التحكم فيها (على سبيل المثال، ٣٠-٥٠ ردًا). بعد كل دفعة، أعد تقييم الدقة. غالبًا ما يكون هذا نقطة انطلاق عملية.
 
-يجب أن تهدف الأداة إلى تقديم إرشادات حول حجم الدفعة التالية المعقول بناءً على عدم اليقين الحالي والمسافة إلى الدقة المستهدفة.
+يجب أن تهدف الأداة إلى تقديم إرشادات حول حجم الدفعة التالية المعقول بناءً على عدم اليقين الحالي والمسافة إلى الدقة المستهدفة.</div>
     """},
     "sec3_heterogeneity_subheader": {"en": "3.5. Handling Data Heterogeneity Over Time",
                                      "ar": "٣.٥. التعامل مع عدم تجانس البيانات بمرور الوقت"},
@@ -299,7 +296,7 @@ A key challenge is that service provider performance or general pilgrim satisfac
     These models can explicitly model variation over time or across different service providers simultaneously, allowing "borrowing strength" across units while also estimating individual trajectories. This is a more sophisticated approach suitable for later phases.
 
 The choice of method depends on the complexity deemed appropriate and the available data. Starting with a discount factor is often a pragmatic first step.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 التحدي الرئيسي هو أن أداء مقدمي الخدمات أو رضا الحجاج العام قد يتغير بمرور الوقت. قد يكون استخدام البيانات التاريخية بشكل غير نقدي كتوزيع مسبق مضللاً إذا حدثت تغييرات.
 
 * **"المعلمة الفائقة للتعلم" (عامل الخصم / Power Prior):**
@@ -318,13 +315,13 @@ The choice of method depends on the complexity deemed appropriate and the availa
 * **نماذج Bayesian الهرمية (متقدمة):**
     يمكن لهذه النماذج نمذجة التباين بمرور الوقت أو عبر مختلف مقدمي الخدمات في وقت واحد، مما يسمح "باقتراض القوة" عبر الوحدات مع تقدير المسارات الفردية أيضًا. هذا نهج أكثر تطوراً ومناسب للمراحل اللاحقة.
 
-يعتمد اختيار الطريقة على التعقيد الذي يعتبر مناسبًا والبيانات المتاحة. غالبًا ما يكون البدء بعامل الخصم خطوة عملية أولى.
+يعتمد اختيار الطريقة على التعقيد الذي يعتبر مناسبًا والبيانات المتاحة. غالبًا ما يكون البدء بعامل الخصم خطوة عملية أولى.</div>
     """},
 
     # Section 4
     "sec4_title": {"en": "4. Implementation Roadmap (Conceptual)", "ar": "٤. خارطة طريق التنفيذ (مفاهيمية)"},
     "sec4_intro_md": {"en": "Implementing the Bayesian adaptive estimation framework involves several key stages:",
-                       "ar": "يتضمن تنفيذ إطار تقدير Bayesian التكيفي عدة مراحل رئيسية:"},
+                       "ar": "<div dir='rtl'>يتضمن تنفيذ إطار تقدير Bayesian التكيفي عدة مراحل رئيسية:</div>"},
     "roadmap_phase_col": {"en": "Phase", "ar": "المرحلة"},
     "roadmap_step_col": {"en": "Step", "ar": "الخطوة"},
     "roadmap_desc_col": {"en": "Description", "ar": "الوصف"},
@@ -357,12 +354,12 @@ The choice of method depends on the complexity deemed appropriate and the availa
 * **Formal Use of Prior Knowledge:** Allows systematic incorporation of historical data or expert insights, which can be particularly useful with sparse initial data for new services or specific subgroups.
 * **Intuitive Uncertainty Quantification:** Credible intervals offer a direct probabilistic interpretation of the parameter's range, which can be easier for stakeholders to understand than frequentist confidence intervals.
 * **Rich Output:** Provides a full posterior distribution for each parameter, offering more insight than just a point estimate and an interval.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **الكفاءة:** يستهدف جهد أخذ العينات حيث تشتد الحاجة إليه، مما قد يقلل من أحجام العينات الإجمالية مقارنة بالطرق الثابتة مع تحقيق الدقة المطلوبة.
 * **القدرة على التكيف:** يستجيب للبيانات الواردة، مما يجعله مناسبًا للبيئات الديناميكية حيث قد يتقلب الرضا أو حيث تكون المعرفة الأولية منخفضة.
 * **الاستخدام الرسمي للمعرفة المسبقة:** يسمح بالدمج المنهجي للبيانات التاريخية أو رؤى الخبراء، والتي يمكن أن تكون مفيدة بشكل خاص مع البيانات الأولية المتفرقة للخدمات الجديدة أو المجموعات الفرعية المحددة.
 * **قياس عدم اليقين بشكل بديهي:** توفر فترات الموثوقية تفسيرًا احتماليًا مباشرًا لنطاق المعلمة، والذي يمكن أن يكون أسهل على أصحاب المصلحة فهمه من فترات الثقة الإحصائية التقليدية.
-* **مخرجات غنية:** يوفر توزيعًا لاحقًا كاملاً لكل معلمة، مما يوفر رؤية أعمق من مجرد تقدير نقطي وفترة.
+* **مخرجات غنية:** يوفر توزيعًا لاحقًا كاملاً لكل معلمة، مما يوفر رؤية أعمق من مجرد تقدير نقطي وفترة.</div>
     """},
     "sec5_limitations_subheader": {"en": "5.2. Limitations and Considerations", "ar": "٥.٢. القيود والاعتبارات"},
     "sec5_limitations_md": {"en": """
@@ -371,12 +368,12 @@ The choice of method depends on the complexity deemed appropriate and the availa
 * **Computational Cost:** While Beta-Binomial models are computationally simple, more complex Bayesian models (e.g., hierarchical models, models requiring MCMC simulation) can be computationally intensive.
 * **Interpretation Differences:** Practitioners familiar with frequentist statistics need to understand the different interpretations of Bayesian outputs (e.g., credible intervals vs. confidence intervals).
 * **"Black Box" Perception:** If not explained clearly, the adaptive nature and Bayesian calculations might be perceived as a "black box" by those unfamiliar with the methods. Clear communication is key.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **التعقيد:** يمكن أن تكون طرق Bayesian أكثر تطلبًا من الناحية المفاهيمية من الأساليب الإحصائية التقليدية. يتطلب التنفيذ معرفة متخصصة.
 * **اختيار التوزيع المسبق:** يمكن أن يؤثر اختيار التوزيع المسبق على النتائج اللاحقة، خاصة مع أحجام العينات الصغيرة. يتطلب هذا تبريرًا دقيقًا وشفافية. بينما تهدف التوزيعات المسبقة "غير الإعلامية" إلى تقليل هذا التأثير، فإن التوزيعات المسبقة غير الإعلامية حقًا ليست دائمًا واضحة ومباشرة.
 * **التكلفة الحسابية:** بينما تكون نماذج Beta-Binomial بسيطة حسابيًا، يمكن أن تكون نماذج Bayesian الأكثر تعقيدًا (على سبيل المثال، النماذج الهرمية، النماذج التي تتطلب محاكاة MCMC) كثيفة حسابيًا.
 * **اختلافات التفسير:** يحتاج الممارسون المطلعون على الإحصاءات التقليدية إلى فهم التفسيرات المختلفة لمخرجات Bayesian (على سبيل المثال، فترات الموثوقية مقابل فترات الثقة).
-* **تصور "الصندوق الأسود":** إذا لم يتم شرحها بوضوح، فقد يُنظر إلى الطبيعة التكيفية وحسابات Bayesian على أنها "صندوق أسود" من قبل أولئك غير المطلعين على الطرق. التواصل الواضح هو المفتاح.
+* **تصور "الصندوق الأسود":** إذا لم يتم شرحها بوضوح، فقد يُنظر إلى الطبيعة التكيفية وحسابات Bayesian على أنها "صندوق أسود" من قبل أولئك غير المطلعين على الطرق. التواصل الواضح هو المفتاح.</div>
     """},
     "sec5_assumptions_subheader": {"en": "5.3. Key Assumptions", "ar": "٥.٣. الافتراضات الرئيسية"},
     "sec5_assumptions_md": {"en": """
@@ -384,11 +381,11 @@ The choice of method depends on the complexity deemed appropriate and the availa
 * **Model Appropriateness:** The chosen likelihood and prior distributions should reasonably reflect the data-generating process and existing knowledge. For satisfaction proportions, the Beta-Binomial model is often robust.
 * **Stability (or Modeled Change):** The underlying parameter being measured (e.g., satisfaction rate) is assumed to be relatively stable between iterative updates within a survey wave, OR changes are explicitly modeled (e.g., via discount factors or dynamic models). Rapid, unmodeled fluctuations can be challenging.
 * **Accurate Data:** Assumes responses are truthful and accurately recorded.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **تمثيلية العينات:** يُفترض أن كل دفعة من البيانات المجمعة تمثل المجموعة (الفرعية) السكانية ذات الأهمية *في تلك اللحظة الزمنية*. ستؤثر تحيزات أخذ العينات على صحة التقديرات.
 * **ملاءمة النموذج:** يجب أن تعكس دالة الإمكان والتوزيعات المسبقة المختارة بشكل معقول عملية توليد البيانات والمعرفة الحالية. بالنسبة لنسب الرضا، غالبًا ما يكون نموذج Beta-Binomial قويًا.
 * **الاستقرار (أو التغيير المنمذج):** يُفترض أن المعلمة الأساسية التي يتم قياسها (على سبيل المثال، معدل الرضا) مستقرة نسبيًا بين التحديثات التكرارية داخل موجة الاستطلاع، أو يتم نمذجة التغييرات بشكل صريح (على سبيل المثال، عبر عوامل الخصم أو النماذج الديناميكية). يمكن أن تكون التقلبات السريعة غير المنمذجة صعبة.
-* **بيانات دقيقة:** يفترض أن الردود صادقة ومسجلة بدقة.
+* **بيانات دقيقة:** يفترض أن الردود صادقة ومسجلة بدقة.</div>
     """},
     "sec5_recommendations_subheader": {"en": "5.4. Practical Recommendations", "ar": "٥.٤. توصيات عملية"},
     "sec5_recommendations_md": {"en": """
@@ -398,47 +395,47 @@ The choice of method depends on the complexity deemed appropriate and the availa
 * **Regular Review and Validation:** Periodically review the performance of the models. Compare Bayesian estimates with those from traditional methods if possible, especially during a transition period. Validate assumptions.
 * **Stakeholder Communication:** Develop clear ways to communicate the methodology, its benefits, and the interpretation of results to stakeholders who may not be statisticians.
 * **Pilot Thoroughly:** Before full-scale implementation, conduct thorough pilot studies to refine the process, test the technology, and identify unforeseen challenges.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 * **ابدأ ببساطة:** ابدأ بمقاييس الرضا الأساسية والنماذج البسيطة (مثل Beta-Binomial). يمكن إضافة التعقيد بشكل متكرر مع اكتساب الخبرة.
 * **استثمر في التدريب:** تأكد من أن الفريق المشارك في تنفيذ وتفسير النتائج لديه تدريب كافٍ في إحصاءات Bayesian.
 * **الشفافية هي المفتاح:** قم بتوثيق الخيارات الخاصة بالتوزيعات المسبقة والنماذج والقواعد التكيفية. قم بإجراء تحليلات الحساسية لفهم تأثير خيارات التوزيع المسبق المختلفة، خاصة في المراحل المبكرة أو مع بيانات محدودة.
 * **المراجعة والتحقق المنتظم:** قم بمراجعة أداء النماذج بشكل دوري. قارن تقديرات Bayesian بالطرق التقليدية إذا أمكن، خاصة خلال فترة انتقالية. تحقق من صحة الافتراضات.
 * **التواصل مع أصحاب المصلحة:** طور طرقًا واضحة لتوصيل المنهجية وفوائدها وتفسير النتائج لأصحاب المصلحة الذين قد لا يكونون إحصائيين.
-* **التجربة الأولية الشاملة:** قبل التنفيذ على نطاق واسع، قم بإجراء دراسات تجريبية شاملة لتحسين العملية واختبار التكنولوجيا وتحديد التحديات غير المتوقعة.
+* **التجربة الأولية الشاملة:** قبل التنفيذ على نطاق واسع، قم بإجراء دراسات تجريبية شاملة لتحسين العملية واختبار التكنولوجيا وتحديد التحديات غير المتوقعة.</div>
     """},
 
     # Section 6
     "sec6_title": {"en": "6. Interactive Illustration: Beta-Binomial Model", "ar": "٦. توضيح تفاعلي: نموذج Beta-Binomial"},
     "sec6_intro_md": {"en": "This section provides a simple interactive illustration of how a Beta prior is updated to a Beta posterior with new data (Binomial likelihood). This is the core of estimating a proportion (e.g., satisfaction rate) in a Bayesian way.",
-                      "ar": "يقدم هذا القسم توضيحًا تفاعليًا بسيطًا لكيفية تحديث توزيع Beta المسبق إلى توزيع Beta لاحق ببيانات جديدة (دالة الإمكان Binomial). هذا هو جوهر تقدير نسبة (على سبيل المثال، معدل الرضا) بطريقة Bayesian."},
+                      "ar": "<div dir='rtl'>يقدم هذا القسم توضيحًا تفاعليًا بسيطًا لكيفية تحديث توزيع Beta المسبق إلى توزيع Beta لاحق ببيانات جديدة (دالة الإمكان Binomial). هذا هو جوهر تقدير نسبة (على سبيل المثال، معدل الرضا) بطريقة Bayesian.</div>"},
     "sec6_prior_subheader": {"en": "Prior Beliefs", "ar": "المعتقدات المسبقة"},
     "sec6_prior_md": {"en": "The Beta distribution $Beta(\\alpha, \\beta)$ is a common prior for proportions. $\\alpha$ can be thought of as prior 'successes' and $\\beta$ as prior 'failures'. $Beta(1,1)$ is a uniform (uninformative) prior.",
-                       "ar": "توزيع Beta $Beta(\\alpha, \\beta)$ هو توزيع مسبق شائع للنسب. يمكن اعتبار $\\alpha$ بمثابة "نجاحات" مسبقة و $\\beta$ بمثابة "إخفاقات" مسبقة. $Beta(1,1)$ هو توزيع منتظم (غير إعلامي) مسبق."},
+                       "ar": "<div dir='rtl'>توزيع Beta $Beta(\\alpha, \\beta)$ هو توزيع مسبق شائع للنسب. يمكن اعتبار $\\alpha$ بمثابة "نجاحات" مسبقة و $\\beta$ بمثابة "إخفاقات" مسبقة. $Beta(1,1)$ هو توزيع منتظم (غير إعلامي) مسبق.</div>"},
     "sec6_prior_alpha_label": {"en": "Prior Alpha (α₀)", "ar": "ألفا المسبقة (α₀)"},
     "sec6_prior_beta_label": {"en": "Prior Beta (β₀)", "ar": "بيتا المسبقة (β₀)"},
     "sec6_prior_mean_label": {"en": "Prior Mean", "ar": "المتوسط المسبق"},
     "sec6_prior_ci_label": {"en": "95% Credible Interval (Prior)", "ar": "فترة الموثوقية ٩٥٪ (المسبقة)"},
     "sec6_width_label": {"en": "Width", "ar": "العرض"},
     "sec6_likelihood_subheader": {"en": "New Survey Data (Likelihood)", "ar": "بيانات الاستطلاع الجديدة (دالة الإمكان)"},
-    "sec6_likelihood_md": {"en": "Enter the results from a new batch of surveys.", "ar": "أدخل النتائج من دفعة جديدة من الاستطلاعات."},
+    "sec6_likelihood_md": {"en": "Enter the results from a new batch of surveys.", "ar": "<div dir='rtl'>أدخل النتائج من دفعة جديدة من الاستطلاعات.</div>"},
     "sec6_surveys_n_label": {"en": "Number of New Surveys (n)", "ar": "عدد الاستطلاعات الجديدة (n)"},
     "sec6_surveys_k_label": {"en": "Number Satisfied in New Surveys (k)", "ar": "عدد الراضين في الاستطلاعات الجديدة (k)"},
     "sec6_observed_sat_label": {"en": "Observed Satisfaction in New Data", "ar": "الرضا الملاحظ في البيانات الجديدة"},
     "sec6_posterior_subheader": {"en": "Posterior Beliefs (After Update)", "ar": "المعتقدات اللاحقة (بعد التحديث)"},
-    "sec6_posterior_dist_label": {"en": "The posterior distribution is $Beta(\\alpha_0 + k, \\beta_0 + n - k) = Beta({posterior_alpha:.1f}, {posterior_beta:.1f})$",
-                                   "ar": "التوزيع اللاحق هو $Beta(\\alpha_0 + k, \\beta_0 + n - k) = Beta({posterior_alpha:.1f}, {posterior_beta:.1f})$"},
+    "sec6_posterior_dist_template": {"en": "The posterior distribution is $Beta(\\alpha_0 + k, \\beta_0 + n - k) = Beta({posterior_alpha:.1f}, {posterior_beta:.1f})$",
+                                     "ar": "التوزيع اللاحق هو $Beta(\\alpha_0 + k, \\beta_0 + n - k) = Beta({posterior_alpha:.1f}, {posterior_beta:.1f})$"},
     "sec6_posterior_mean_label": {"en": "Posterior Mean", "ar": "المتوسط اللاحق"},
     "sec6_posterior_ci_label": {"en": "95% Credible Interval (Posterior)", "ar": "فترة الموثوقية ٩٥٪ (اللاحقة)"},
     "sec6_target_width_label": {"en": "Target Credible Interval Width for Stopping", "ar": "عرض فترة الموثوقية المستهدف للإيقاف"},
-    "sec6_target_met_success": {"en": "Target precision met! Current width ({current_width:.3f}) ≤ Target width ({target_width:.3f}).",
-                                "ar": "تم تحقيق الدقة المستهدفة! العرض الحالي ({current_width:.3f}) ≤ العرض المستهدف ({target_width:.3f})."},
-    "sec6_target_not_met_warning": {"en": "Target precision not yet met. Current width ({current_width:.3f}) > Target width ({target_width:.3f}). Consider more samples.",
-                                     "ar": "لم يتم تحقيق الدقة المستهدفة بعد. العرض الحالي ({current_width:.3f}) > العرض المستهدف ({target_width:.3f}). ضع في اعتبارك المزيد من العينات."},
-    "sec6_plot1_title": {"en": "Prior and Posterior Distributions of Satisfaction Rate", "ar": "التوزيعات المسبقة واللاحقة لمعدل الرضا"},
-    "sec6_plot_xlabel": {"en": "Satisfaction Rate (θ)", "ar": "معدل الرضا (θ)"},
-    "sec6_plot_ylabel": {"en": "Density", "ar": "الكثافة"},
-    "sec6_plot_prior_legend": {"en": "Prior", "ar": "المسبق"},
-    "sec6_plot_posterior_legend": {"en": "Posterior", "ar": "اللاحق"},
+    "sec6_target_met_success_template": {"en": "Target precision met! Current width ({current_width:.3f}) ≤ Target width ({target_width:.3f}).",
+                                         "ar": "تم تحقيق الدقة المستهدفة! العرض الحالي ({current_width:.3f}) ≤ العرض المستهدف ({target_width:.3f})."},
+    "sec6_target_not_met_warning_template": {"en": "Target precision not yet met. Current width ({current_width:.3f}) > Target width ({target_width:.3f}). Consider more samples.",
+                                             "ar": "لم يتم تحقيق الدقة المستهدفة بعد. العرض الحالي ({current_width:.3f}) > العرض المستهدف ({target_width:.3f}). ضع في اعتبارك المزيد من العينات."},
+    "sec6_plot1_title_base": {"en": "Prior and Posterior Distributions of Satisfaction Rate", "ar": "التوزيعات المسبقة واللاحقة لمعدل الرضا"},
+    "sec6_plot_xlabel_base": {"en": "Satisfaction Rate (θ)", "ar": "معدل الرضا (θ)"},
+    "sec6_plot_ylabel_base": {"en": "Density", "ar": "الكثافة"},
+    "sec6_plot_prior_legend_base": {"en": "Prior", "ar": "المسبق"},
+    "sec6_plot_posterior_legend_base": {"en": "Posterior", "ar": "اللاحق"},
     "sec6_discounting_subheader": {"en": "Conceptual Illustration: Impact of Discounting Older Data",
                                    "ar": "توضيح مفاهيمي: تأثير خصم البيانات القديمة"},
     "sec6_discounting_md": {"en": """
@@ -446,24 +443,24 @@ This illustrates how a discount factor might change the influence of 'old' poste
 Assume the 'Posterior' calculated above is now 'Old Data' from a previous period.
 We want to form a new prior for the upcoming period.
 An 'Initial Prior' (e.g., $Beta(1,1)$) represents a baseline, less informative belief.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 يوضح هذا كيف يمكن لعامل الخصم أن يغير تأثير بيانات "البيانات القديمة" اللاحقة عند استخدامها لتشكيل توزيع مسبق لفترة "جديدة".
 افترض أن "التوزيع اللاحق" المحسوب أعلاه هو الآن "بيانات قديمة" من فترة سابقة.
 نريد تشكيل توزيع مسبق جديد للفترة القادمة.
-يمثل "التوزيع المسبق الأولي" (على سبيل المثال، $Beta(1,1)$) اعتقادًا أساسيًا أقل إفادة.
+يمثل "التوزيع المسبق الأولي" (على سبيل المثال، $Beta(1,1)$) اعتقادًا أساسيًا أقل إفادة.</div>
     """},
     "sec6_discount_factor_label": {"en": "Discount Factor (δ) for Old Data", "ar": "عامل الخصم (δ) للبيانات القديمة"},
     "sec6_discount_factor_help": {"en": "Controls weight of old data. 1.0 = full weight, 0.0 = discard old data, rely only on initial prior.",
                                   "ar": "يتحكم في وزن البيانات القديمة. ١.٠ = وزن كامل، ٠.٠ = تجاهل البيانات القديمة، والاعتماد فقط على التوزيع المسبق الأولي."},
     "sec6_init_prior_alpha_label": {"en": "Initial Prior Alpha (for new period if discounting heavily)", "ar": "ألفا المسبقة الأولية (لفترة جديدة إذا كان الخصم كبيرًا)"},
     "sec6_init_prior_beta_label": {"en": "Initial Prior Beta (for new period if discounting heavily)", "ar": "بيتا المسبقة الأولية (لفترة جديدة إذا كان الخصم كبيرًا)"},
-    "sec6_new_prior_label": {"en": "New Prior for Next Period: $Beta({new_prior_alpha:.2f}, {new_prior_beta:.2f})$",
+    "sec6_new_prior_template": {"en": "New Prior for Next Period: $Beta({new_prior_alpha:.2f}, {new_prior_beta:.2f})$",
                               "ar": "التوزيع المسبق الجديد للفترة التالية: $Beta({new_prior_alpha:.2f}, {new_prior_beta:.2f})$"},
     "sec6_new_prior_mean_label": {"en": "Mean of New Prior", "ar": "متوسط التوزيع المسبق الجديد"},
-    "sec6_plot2_title": {"en": "Forming a New Prior with Discounting", "ar": "تشكيل توزيع مسبق جديد مع الخصم"},
-    "sec6_plot2_old_posterior_legend": {"en": "Old Posterior (Data from T-1)", "ar": "التوزيع اللاحق القديم (بيانات من T-1)"},
-    "sec6_plot2_fixed_prior_legend": {"en": "Fixed Initial Prior", "ar": "التوزيع المسبق الأولي الثابت"},
-    "sec6_plot2_new_prior_legend": {"en": "New Prior (δ={discount_factor})", "ar": "التوزيع المسبق الجديد (δ={discount_factor})"},
+    "sec6_plot2_title_base": {"en": "Forming a New Prior with Discounting", "ar": "تشكيل توزيع مسبق جديد مع الخصم"},
+    "sec6_plot2_old_posterior_legend_base": {"en": "Old Posterior (Data from T-1)", "ar": "التوزيع اللاحق القديم (بيانات من T-1)"},
+    "sec6_plot2_fixed_prior_legend_base": {"en": "Fixed Initial Prior", "ar": "التوزيع المسبق الأولي الثابت"},
+    "sec6_plot2_new_prior_legend_base": {"en": "New Prior", "ar": "التوزيع المسبق الجديد"},
 
 
     # Section 7
@@ -474,12 +471,12 @@ The proposed Bayesian adaptive estimation framework offers a sophisticated, flex
 While it introduces new concepts and requires careful implementation, the long-term benefits—including optimized resource use and a deeper understanding of satisfaction dynamics—are substantial. This proposal advocates for a phased implementation, starting with core metrics and gradually building complexity and scope.
 
 We recommend proceeding with a pilot project to demonstrate the practical benefits and refine the operational aspects of this advanced analytical approach.
-    """, "ar": """
+    """, "ar": """<div dir='rtl'>
 يقدم إطار تقدير Bayesian التكيفي المقترح نهجًا متطورًا ومرنًا وفعالًا لتحليل استطلاعات رضا الحجاج. من خلال تحديث المعتقدات بشكل متكرر وتعديل جهود أخذ العينات ديناميكيًا، تعد هذه المنهجية برؤى أكثر دقة وفي الوقت المناسب، مما يتيح اتخاذ قرارات أفضل استنارة لتعزيز تجربة الحج.
 
 في حين أنه يقدم مفاهيم جديدة ويتطلب تنفيذًا دقيقًا، فإن الفوائد طويلة الأجل - بما في ذلك الاستخدام الأمثل للموارد والفهم الأعمق لديناميكيات الرضا - كبيرة. يدعو هذا المقترح إلى تنفيذ مرحلي، بدءًا من المقاييس الأساسية وبناء التعقيد والنطاق تدريجيًا.
 
-نوصي بالمضي قدمًا في مشروع تجريبي لإثبات الفوائد العملية وتحسين الجوانب التشغيلية لهذا النهج التحليلي المتقدم.
+نوصي بالمضي قدمًا في مشروع تجريبي لإثبات الفوائد العملية وتحسين الجوانب التشغيلية لهذا النهج التحليلي المتقدم.</div>
     """}
 }
 
@@ -490,45 +487,45 @@ def get_text(key):
     """Retrieves text in the currently selected language."""
     return LANGUAGES[key][current_lang]
 
-def render_md(text_key, unsafe_html=False):
-    """Renders markdown text, handling RTL for Arabic."""
+def render_md(text_key, unsafe_html=True): # Set unsafe_html to True by default for div tags
+    """Renders markdown text, handling RTL for Arabic by checking if the AR string starts with <div dir='rtl'>."""
     text_content = get_text(text_key)
-    if current_lang == "ar":
-        st.markdown(f"<div dir='rtl'>{text_content}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(text_content, unsafe_allow_html=unsafe_html)
+    # For Arabic, we assume the text_content itself contains the <div dir='rtl'> wrapper
+    st.markdown(text_content, unsafe_allow_html=unsafe_html)
+
 
 def render_header(text_key, level=1):
     text_content = get_text(text_key)
+    header_tag = f"h{level}"
     if current_lang == "ar":
-        st.markdown(f"<div dir='rtl'>{'#'*level} {text_content}</div>", unsafe_allow_html=True)
+        st.markdown(f"<{header_tag} dir='rtl'>{text_content}</{header_tag}>", unsafe_allow_html=True)
     else:
-        st.markdown(f"{'#'*level} {text_content}")
+        st.markdown(f"<{header_tag}>{text_content}</{header_tag}>", unsafe_allow_html=True)
 
 
-def plot_beta_distribution(alpha, beta, label_key, ax, discount_factor_val=None):
-    """Plots a Beta distribution with internationalized label."""
-    label_template = get_text(label_key)
-    if discount_factor_val is not None:
-        label = label_template.format(discount_factor=discount_factor_val, alpha=alpha, beta=beta)
+def plot_beta_distribution(alpha, beta, base_label_key, ax, is_discounted_label=False, discount_factor_val=None):
+    """Plots a Beta distribution with internationalized and formatted label."""
+    base_label = get_text(base_label_key)
+    if is_discounted_label:
+        # For Arabic, ensure parameters are displayed correctly in an LTR context if needed,
+        # though f-string will embed them as is.
+        label = f"{base_label} (δ={discount_factor_val:.1f}, α={alpha:.2f}, β={beta:.2f})"
     else:
-        label = label_template.format(alpha=alpha, beta=beta)
+        label = f"{base_label} (α={alpha:.2f}, β={beta:.2f})"
 
-    x = np.linspace(0, 1, 500)
-    y = stats.beta.pdf(x, alpha, beta)
-    ax.plot(x, y, label=label)
-    ax.fill_between(x, y, alpha=0.2)
+    x_vals = np.linspace(0, 1, 500)
+    y_vals = stats.beta.pdf(x_vals, alpha, beta)
+    ax.plot(x_vals, y_vals, label=label)
+    ax.fill_between(x_vals, y_vals, alpha=0.2)
 
 def update_beta_parameters(prior_alpha, prior_beta, successes, failures):
-    """Updates Beta parameters given new data."""
     posterior_alpha = prior_alpha + successes
     posterior_beta = prior_beta + failures
     return posterior_alpha, posterior_beta
 
 def get_credible_interval(alpha, beta, conf_level=0.95):
-    """Calculates the credible interval for a Beta distribution."""
-    if alpha <= 0 or beta <= 0: # Invalid parameters
-        return (0,0)
+    if alpha <= 0 or beta <= 0:
+        return (0.0, 0.0) # Return float tuple
     return stats.beta.interval(conf_level, alpha, beta)
 
 # --- Proposal Content Functions ---
@@ -543,7 +540,7 @@ def challenges_addressed():
     render_header("sec2_title", level=2)
     render_md("sec2_intro_md")
 
-    render_header("sec2_challenge5_header", level=3) # Why not data lumping
+    render_header("sec2_challenge5_header", level=3)
     render_md("sec2_challenge5_md")
 
     render_header("sec2_challenge1_header", level=3)
@@ -561,25 +558,25 @@ def bayesian_adaptive_methodology():
     render_md("sec3_intro_md")
 
     render_header("sec3_concepts_subheader", level=3)
-    render_md("sec3_concepts_md", unsafe_html=True) # For LaTeX
+    render_md("sec3_concepts_md")
 
     render_header("sec3_iterative_subheader", level=3)
     render_md("sec3_iterative_md")
     # If you have a locally saved image, you can add it like this:
     # try:
-    #     st.image("your_local_image.png", caption=get_text("sec3_image_caption"))
+    # st.image("your_local_image.png", caption=get_text("sec3_image_caption")) # Add sec3_image_caption to LANGUAGES
     # except FileNotFoundError:
     # st.warning("Local image not found. Please add 'your_local_image.png' to the app directory.")
 
 
     render_header("sec3_modeling_subheader", level=3)
-    render_md("sec3_modeling_md", unsafe_html=True) # For LaTeX
+    render_md("sec3_modeling_md")
 
     render_header("sec3_sampling_logic_subheader", level=3)
-    render_md("sec3_sampling_logic_md", unsafe_html=True) # For LaTeX
+    render_md("sec3_sampling_logic_md")
 
     render_header("sec3_heterogeneity_subheader", level=3)
-    render_md("sec3_heterogeneity_md", unsafe_html=True) # For LaTeX
+    render_md("sec3_heterogeneity_md")
 
 def implementation_roadmap():
     render_header("sec4_title", level=2)
@@ -591,7 +588,12 @@ def implementation_roadmap():
         get_text("roadmap_step_col"),
         get_text("roadmap_desc_col")
     ])
-    st.dataframe(df_roadmap, hide_index=True, use_container_width=True)
+    # Display DataFrame with st.markdown to control RTL for Arabic table headers/content if necessary
+    if current_lang == 'ar':
+        st.markdown(f"<div dir='rtl'>{df_roadmap.to_html(index=False, classes='dataframe')}</div>", unsafe_allow_html=True)
+    else:
+        st.dataframe(df_roadmap, hide_index=True, use_container_width=True)
+
 
 def note_to_practitioners():
     render_header("sec5_title", level=2)
@@ -617,7 +619,7 @@ def interactive_illustration():
 
     with col1:
         render_header("sec6_prior_subheader", level=3)
-        render_md("sec6_prior_md", unsafe_html=True)
+        render_md("sec6_prior_md")
         prior_alpha = st.slider(get_text("sec6_prior_alpha_label"), min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_a")
         prior_beta = st.slider(get_text("sec6_prior_beta_label"), min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_b")
         prior_mean = prior_alpha / (prior_alpha + prior_beta)
@@ -638,11 +640,8 @@ def interactive_illustration():
     render_header("sec6_posterior_subheader", level=3)
     posterior_alpha, posterior_beta = update_beta_parameters(prior_alpha, prior_beta, num_satisfied, num_not_satisfied)
 
-    posterior_dist_text = get_text("sec6_posterior_dist_label").format(posterior_alpha=posterior_alpha, posterior_beta=posterior_beta)
-    if current_lang == "ar":
-        st.markdown(f"<div dir='rtl'>{posterior_dist_text}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(posterior_dist_text, unsafe_allow_html=True)
+    posterior_dist_text = get_text("sec6_posterior_dist_template").format(posterior_alpha=posterior_alpha, posterior_beta=posterior_beta)
+    render_md_direct(posterior_dist_text)
 
 
     posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
@@ -653,28 +652,28 @@ def interactive_illustration():
     target_width = st.number_input(get_text("sec6_target_width_label"), min_value=0.01, max_value=1.0, value=0.10, step=0.01)
     current_width = posterior_ci[1] - posterior_ci[0]
 
-    if current_width > 0: # Check for valid width before comparing
+    if current_width > 0:
         if current_width <= target_width :
-            st.success(get_text("sec6_target_met_success").format(current_width=current_width, target_width=target_width))
+            st.success(get_text("sec6_target_met_success_template").format(current_width=current_width, target_width=target_width))
         else:
-            st.warning(get_text("sec6_target_not_met_warning").format(current_width=current_width, target_width=target_width))
-    elif prior_alpha > 0 and prior_beta > 0 : # If width is 0 but prior was valid, it means 100% certainty (e.g. alpha=1, beta=0 after data)
-         st.success(get_text("sec6_target_met_success").format(current_width=current_width, target_width=target_width))
+            st.warning(get_text("sec6_target_not_met_warning_template").format(current_width=current_width, target_width=target_width))
+    elif prior_alpha > 0 and prior_beta > 0 :
+         st.success(get_text("sec6_target_met_success_template").format(current_width=current_width, target_width=target_width))
 
 
     fig, ax = plt.subplots()
-    plot_beta_distribution(prior_alpha, prior_beta, "sec6_plot_prior_legend", ax)
-    plot_beta_distribution(posterior_alpha, posterior_beta, "sec6_plot_posterior_legend", ax)
-    ax.set_title(get_text("sec6_plot1_title"))
-    ax.set_xlabel(get_text("sec6_plot_xlabel"))
-    ax.set_ylabel(get_text("sec6_plot_ylabel"))
+    plot_beta_distribution(prior_alpha, prior_beta, "sec6_plot_prior_legend_base", ax)
+    plot_beta_distribution(posterior_alpha, posterior_beta, "sec6_plot_posterior_legend_base", ax)
+    ax.set_title(get_text("sec6_plot1_title_base"))
+    ax.set_xlabel(get_text("sec6_plot_xlabel_base"))
+    ax.set_ylabel(get_text("sec6_plot_ylabel_base"))
     ax.legend()
     ax.grid(True)
     st.pyplot(fig)
 
     st.markdown("---")
     render_header("sec6_discounting_subheader", level=3)
-    render_md("sec6_discounting_md", unsafe_html=True)
+    render_md("sec6_discounting_md")
 
     old_posterior_alpha = posterior_alpha
     old_posterior_beta = posterior_beta
@@ -688,22 +687,19 @@ def interactive_illustration():
     new_prior_alpha = discount_factor * old_posterior_alpha + (1 - discount_factor) * initial_prior_alpha
     new_prior_beta = discount_factor * old_posterior_beta + (1 - discount_factor) * initial_prior_beta
 
-    new_prior_text = get_text("sec6_new_prior_label").format(new_prior_alpha=new_prior_alpha, new_prior_beta=new_prior_beta)
-    if current_lang == "ar":
-        st.markdown(f"<div dir='rtl'>{new_prior_text}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(new_prior_text, unsafe_allow_html=True)
+    new_prior_text = get_text("sec6_new_prior_template").format(new_prior_alpha=new_prior_alpha, new_prior_beta=new_prior_beta)
+    render_md_direct(new_prior_text)
 
     new_prior_mean = new_prior_alpha / (new_prior_alpha + new_prior_beta)
     st.write(f"{get_text('sec6_new_prior_mean_label')}: {new_prior_mean:.3f}")
 
     fig2, ax2 = plt.subplots()
-    plot_beta_distribution(old_posterior_alpha, old_posterior_beta, "sec6_plot2_old_posterior_legend", ax2)
-    plot_beta_distribution(initial_prior_alpha, initial_prior_beta, "sec6_plot2_fixed_prior_legend", ax2)
-    plot_beta_distribution(new_prior_alpha, new_prior_beta, "sec6_plot2_new_prior_legend", ax2, discount_factor_val=discount_factor)
-    ax2.set_title(get_text("sec6_plot2_title"))
-    ax2.set_xlabel(get_text("sec6_plot_xlabel"))
-    ax2.set_ylabel(get_text("sec6_plot_ylabel"))
+    plot_beta_distribution(old_posterior_alpha, old_posterior_beta, "sec6_plot2_old_posterior_legend_base", ax2)
+    plot_beta_distribution(initial_prior_alpha, initial_prior_beta, "sec6_plot2_fixed_prior_legend_base", ax2)
+    plot_beta_distribution(new_prior_alpha, new_prior_beta, "sec6_plot2_new_prior_legend_base", ax2, is_discounted_label=True, discount_factor_val=discount_factor)
+    ax2.set_title(get_text("sec6_plot2_title_base"))
+    ax2.set_xlabel(get_text("sec6_plot_xlabel_base"))
+    ax2.set_ylabel(get_text("sec6_plot_ylabel_base"))
     ax2.legend()
     ax2.grid(True)
     st.pyplot(fig2)
@@ -713,13 +709,22 @@ def conclusion():
     render_header("sec7_title", level=2)
     render_md("sec7_conclusion_md")
 
+# --- Helper function for direct markdown rendering (needed for formatted strings) ---
+def render_md_direct(text_content, unsafe_html=True):
+    if current_lang == "ar" and not text_content.startswith("<div dir='rtl'>"):
+         # Heuristic: if it's Arabic and doesn't already have RTL div, wrap it.
+         # This is mainly for strings coming from .format()
+        st.markdown(f"<div dir='rtl'>{text_content}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(text_content, unsafe_allow_html=unsafe_html)
+
 # --- Streamlit App Structure ---
 
 # Language Selection in Sidebar
 selected_lang_option = st.sidebar.selectbox(
-    label="Select Language / اختر اللغة",
+    label="Select Language / اختر اللغة", # This label is bilingual for initial display
     options=["English", "العربية"],
-    index=0 # Default to English
+    index=0
 )
 current_lang = "ar" if selected_lang_option == "العربية" else "en"
 
@@ -733,7 +738,7 @@ else:
 
 
 # Sidebar Navigation
-PAGES_KEYS = {
+PAGES_MAPPING = {
     "sec1_title": introduction_objectives,
     "sec2_title": challenges_addressed,
     "sec3_title": bayesian_adaptive_methodology,
@@ -743,22 +748,24 @@ PAGES_KEYS = {
     "sec7_title": conclusion
 }
 
-sidebar_options = [get_text(key) for key in PAGES_KEYS.keys()]
+sidebar_options_keys = list(PAGES_MAPPING.keys())
+sidebar_display_options = [get_text(key) for key in sidebar_options_keys]
 
-# --- Main app ---
+
 st.sidebar.title(get_text("sidebar_title"))
-selection_text = st.sidebar.radio("", sidebar_options) # Radio uses the translated text
+# Use a unique key for the radio button to avoid issues if options change
+selected_display_text = st.sidebar.radio("navigation_radio", sidebar_display_options, key=f"nav_radio_{current_lang}")
 
-# Find the key corresponding to the selected translated text
-selected_key = None
-for key, page_func in PAGES_KEYS.items():
-    if get_text(key) == selection_text:
-        selected_key = key
+
+selected_key_for_page = None
+for key, display_text in zip(sidebar_options_keys, sidebar_display_options):
+    if display_text == selected_display_text:
+        selected_key_for_page = key
         break
 
-if selected_key:
-    page_function = PAGES_KEYS[selected_key]
-    page_function()
+if selected_key_for_page:
+    page_function_to_call = PAGES_MAPPING[selected_key_for_page]
+    page_function_to_call()
 
 
 st.sidebar.markdown("---")
