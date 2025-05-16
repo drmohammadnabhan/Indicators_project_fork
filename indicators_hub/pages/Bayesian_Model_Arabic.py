@@ -11,19 +11,18 @@ st.set_page_config(layout="wide", page_title="Adaptive Bayesian Estimation Propo
 # --- Helper Functions for Interactive Illustrations (from your English app) ---
 def plot_beta_distribution(alpha, beta, label, ax):
     """Plots a Beta distribution."""
+    # Ensure alpha and beta are valid for pdf calculation
     if alpha <= 0 or beta <= 0:
-        # Optionally, you could display a message on the plot or log this
-        # For now, just return to avoid erroring out the plot.
-        # ax.text(0.5, 0.5, "Invalid α or β", horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
+        # ax.text(0.5, 0.5, "Invalid α or β for PDF", ha='center', va='center')
         return
     x = np.linspace(0.001, 0.999, 500) # Avoid 0 and 1 for pdf if alpha/beta are small
     try:
         y = stats.beta.pdf(x, alpha, beta)
         ax.plot(x, y, label=f'{label} (α={alpha:.2f}, β={beta:.2f})')
         ax.fill_between(x, y, alpha=0.2)
-        ax.set_ylim(bottom=0) 
+        ax.set_ylim(bottom=0) # Ensure y-axis starts at 0
     except ValueError:
-        # ax.text(0.5, 0.5, "PDF calculation error", horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
+        # ax.text(0.5, 0.5, "Error in PDF calculation", ha='center', va='center')
         pass
 
 
@@ -35,18 +34,15 @@ def update_beta_parameters(prior_alpha, prior_beta, successes, failures):
 
 def get_credible_interval(alpha, beta, conf_level=0.95):
     """Calculates the credible interval for a Beta distribution."""
-    if alpha <= 0 or beta <= 0: 
-        return (0.0, 0.0) 
+    if alpha <= 0 or beta <= 0: # Invalid parameters
+        return (0.0, 0.0) # Return float tuple
     try:
-        interval = stats.beta.interval(conf_level, alpha, beta)
-        # Ensure interval bounds are not nan, which can happen with extreme alpha/beta
-        lower = interval[0] if not np.isnan(interval[0]) else 0.0
-        upper = interval[1] if not np.isnan(interval[1]) else 1.0
-        return (lower, upper)
-    except ValueError: 
+        return stats.beta.interval(conf_level, alpha, beta)
+    except ValueError: # Catch math domain errors
         return (0.0,0.0)
 
-# --- Proposal Content ---
+
+# --- Proposal Content (Original English + Arabic Guide Sections) ---
 
 def introduction_objectives():
     st.header("1. Introduction & Objectives")
@@ -71,25 +67,22 @@ def introduction_objectives():
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    
-    arabic_guide_text_intro = """
-    يوضح هذا القسم إطار عمل تقدير Bayesian التكيفي المقترح. الهدف هو تحسين جمع وتحليل بيانات استطلاعات رضا الحجاج وتقييم الخدمات.
-    يشرح المنهجية المقترحة لمواجهة التعقيدات الحالية في تطوير مقاييس الرضا.
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_intro}</div>", unsafe_allow_html=True)
-    
-    arabic_guide_text_objectives = """
-    الأهداف الأساسية تشمل:
-    - تحقيق الدقة المطلوبة بكفاءة.
-    - إجراء تعديلات ديناميكية على حجم العينات.
-    - تقديم تقديرات موثوقة وفي الوقت المناسب.
-    - دمج المعرفة المسبقة والبيانات التاريخية.
-    - التكيف مع الظروف المتغيرة.
-    - تحسين تحليل المجموعات الفرعية.
-    (ملاحظة: استخدم <b>HTML</b> للتنسيق إذا لزم الأمر بعد التأكد من عمل النص العادي)
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_objectives}</div>", unsafe_allow_html=True)
-
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
+    <p><b>مقدمة وأهداف المقترح (القسم ١):</b></p>
+    <p>يوضح هذا القسم إطار عمل تقدير Bayesian التكيفي المقترح. الهدف هو تحسين جمع وتحليل بيانات استطلاعات رضا الحجاج وتقييم الخدمات.</p>
+    <p><b>الأهداف الأساسية (القسم ١.١):</b></p>
+    <ul>
+        <li>تحقيق الدقة المطلوبة بكفاءة.</li>
+        <li>إجراء تعديلات ديناميكية على حجم العينات.</li>
+        <li>تقديم تقديرات موثوقة وفي الوقت المناسب.</li>
+        <li>دمج المعرفة المسبقة والبيانات التاريخية.</li>
+        <li>التكيف مع الظروف المتغيرة.</li>
+        <li>تحسين تحليل المجموعات الفرعية.</li>
+    </ul>
+    <p><i>ملاحظة: هذا النص هو شرح مبسط للنص الإنجليزي أعلاه.</i></p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def challenges_addressed():
     st.header("2. Challenges Addressed by this Methodology")
@@ -104,22 +97,41 @@ def challenges_addressed():
         * **Challenge:** Predetermined sample sizes often lead to either over-sampling (wasting resources when satisfaction is homogenous or already precisely estimated) or under-sampling (resulting in inconclusive results or wide confidence intervals).
         * **Bayesian Solution:** Sampling effort is guided by the current level of uncertainty. If an estimate is already precise, sampling can be reduced or stopped for that segment. If it's imprecise, targeted additional sampling is guided by the model.
 
-    * **Incorporation of Prior Knowledge and Historical Data:** (Content from your English app)
-    * **Assessing Service Provider Performance with Evolving Data:** (Content from your English app)
-    * **Balancing Fresh Data with Historical Insights:** (Content from your English app)
-    * **Resource Allocation for Data Collection:** (Content from your English app)
-    """) # Ensure all English content is here
+    * **Incorporation of Prior Knowledge and Historical Data:**
+        * **Challenge:** Valuable insights from past surveys or existing knowledge about certain pilgrim groups or services are often not formally used to inform current survey efforts or baseline estimates.
+        * **Bayesian Solution:** Priors provide a natural mechanism to incorporate such information. This can lead to more accurate estimates, especially when current data is sparse, and can make the learning process more efficient.
+
+    * **Assessing Service Provider Performance with Evolving Data:**
+        * **Challenge:** Evaluating service providers is difficult when their performance might change over time, or when initial data for a new provider is limited. Deciding when enough data has been collected to make a fair assessment is crucial.
+        * **Bayesian Solution:** The framework can be designed to track performance iteratively. For new providers, it starts with less informative priors and builds evidence. For existing ones, it can incorporate past performance, potentially with mechanisms to down-weight older data if performance is expected to evolve (see Section 3.5).
+
+    * **Balancing Fresh Data with Historical Insights:**
+        * **Challenge:** Determining how much weight to give to historical data versus new, incoming data is critical, especially if there's a possibility of changes in pilgrim sentiment or service quality.
+        * **Bayesian Solution:** Techniques like using power priors or dynamic models allow for a tunable "forgetting factor" or learning rate, systematically managing the influence of past data on current estimates.
+
+    * **Resource Allocation for Data Collection:**
+        * **Challenge:** Allocating limited survey resources (personnel, time, budget) effectively across numerous metrics, pilgrim segments, and service providers.
+        * **Bayesian Solution:** The adaptive approach helps prioritize data collection where uncertainty is highest and the need for precision is greatest, leading to more optimal resource allocation.
+    """)
 
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text = """
-    يشرح هذا القسم كيف يساعد إطار Bayesian التكيفي في التغلب على الصعوبات الحالية في عملية استطلاع الحج، مثل:
-    - صعوبة الحصول على فترات ثقة مستقرة.
-    - عدم كفاءة أحجام العينات الثابتة.
-    (أكمل هذا النص بترجمتك وشرحك الكامل)
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text}</div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
+    <p><b>التحديات التي تعالجها هذه المنهجية (القسم ٢):</b></p>
+    <p>يشرح هذا القسم كيف يساعد إطار Bayesian التكيفي في التغلب على الصعوبات الحالية في عملية استطلاع الحج، مثل:</p>
+    <ul>
+        <li>صعوبة الحصول على فترات ثقة مستقرة.</li>
+        <li>عدم كفاءة أحجام العينات الثابتة.</li>
+        <li>الحاجة إلى دمج المعرفة المسبقة.</li>
+        <li>تقييم أداء مقدمي الخدمات مع البيانات المتطورة.</li>
+        <li>موازنة البيانات الجديدة مع الرؤى التاريخية.</li>
+        <li>تخصيص موارد جمع البيانات بكفاءة.</li>
+    </ul>
+    <p>لكل تحد، يتم توضيح كيف يقدم النهج البايزي التكيفي حلاً.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def bayesian_adaptive_methodology():
     st.header("3. Core Methodology: Bayesian Adaptive Estimation")
@@ -131,106 +143,139 @@ def bayesian_adaptive_methodology():
     st.markdown(r"""
     At its heart, Bayesian inference combines prior knowledge with observed data to arrive at an updated understanding, known as the posterior distribution.
 
-    * **Prior Distribution ($P(\theta)$):** This represents our initial belief...
-    * **Likelihood ($P(D|\theta)$):** This quantifies how probable...
-    * **Posterior Distribution ($P(\theta|D)$):** This is our updated belief...
+    * **Prior Distribution ($P(\theta)$):** This represents our initial belief about a parameter $\theta$ (e.g., the proportion of satisfied pilgrims) *before* observing new data. It can be based on historical data, expert opinion, or be deliberately "uninformative" if we want the data to speak for itself.
+    * **Likelihood ($P(D|\theta)$):** This quantifies how probable the observed data ($D$) is, given a particular value of the parameter $\theta$. It is the function that connects the data to the parameter.
+    * **Posterior Distribution ($P(\theta|D)$):** This is our updated belief about $\theta$ *after* observing the data. It is calculated using Bayes' Theorem:
         $$ P(\theta|D) = \frac{P(D|\theta) \times P(\theta)}{P(D)} $$
-        Where $P(D)$ is the marginal likelihood...
+        Where $P(D)$ is the marginal likelihood of the data, acting as a normalizing constant. In practice, we often focus on the proportionality:
         $$ P(\theta|D) \propto P(D|\theta) \times P(\theta) $$
-    * **Credible Interval:** In Bayesian statistics, a credible interval...
-    """) # Full English content
+    * **Credible Interval:** In Bayesian statistics, a credible interval is a range of values that contains the parameter $\theta$ with a certain probability (e.g., 95%). This is a direct probabilistic statement about the parameter, unlike the frequentist confidence interval.
+    """)
 
     st.subheader("3.2. The Iterative Process")
     st.markdown("""
     The adaptive methodology follows these steps:
-    1.  **Initialization:** ...
-    2.  **Initial Data Collection:** ...
-    3.  **Posterior Update:** ...
-    4.  **Precision Assessment:** ...
-    5.  **Adaptive Decision & Iteration:** ...
-    This cycle continues until the desired precision is achieved...
-    """) # Full English content
-    
+    1.  **Initialization:**
+        * Define the parameter(s) of interest (e.g., satisfaction with lodging, food, logistics for a specific company).
+        * Specify an initial **prior distribution** for each parameter. For satisfaction proportions, a Beta distribution is commonly used.
+        * Set a target precision (e.g., a maximum width for the 95% credible interval).
+
+    2.  **Initial Data Collection:**
+        * Collect an initial batch of survey responses relevant to the parameter(s). The size of this initial batch can be based on practical considerations or a small fixed number.
+
+    3.  **Posterior Update:**
+        * Use the collected data (likelihood) and the current prior distribution to calculate the **posterior distribution** for each parameter.
+
+    4.  **Precision Assessment:**
+        * Calculate the credible interval from the posterior distribution.
+        * Compare the width of this interval to the target precision.
+
+    5.  **Adaptive Decision & Iteration:**
+        * **If Target Precision Met:** For the given parameter, the current level of precision is sufficient. Sampling for this specific indicator/segment can be paused or stopped. The current posterior distribution provides the estimate and its uncertainty.
+        * **If Target Precision Not Met:** More data is needed.
+            * Determine an appropriate additional sample size. This can be guided by projecting how the credible interval width might decrease with more data (based on the current posterior).
+            * Collect the additional batch of survey responses.
+            * Return to Step 3 (Posterior Update), using the current posterior as the new prior for the next update.
+
+    This cycle continues until the desired precision is achieved for all key indicators or available resources for the current wave are exhausted.
+    """)
     # st.image("https_miro.medium.com_v2_resize_fit_1400_1__f_xL41kP9n2_n3L9yY0gLg.png", caption="Conceptual Flow of Bayesian Updating (Source: Medium - adapted for context)")
-    # Commented out - replace with local image if you have one:
-    # if os.path.exists("your_bayesian_flow_image.png"):
-    # st.image("your_bayesian_flow_image.png", caption="Conceptual Flow of Bayesian Updating")
+    # Replace with a local image if available or remove. For now, commented out.
+    # Example: if os.path.exists("your_image.png"): st.image("your_image.png")
 
 
     st.subheader("3.3. Modeling Satisfaction (e.g., using Beta-Binomial Model)")
     st.markdown(r"""
-    For satisfaction metrics that are proportions...
-    * **Parameter of Interest ($\theta$):** The true underlying proportion...
-    * **Prior Distribution (Beta):** We assume the prior belief about $\theta$ follows... $Beta(\alpha_0, \beta_0)$.
-    * **Likelihood (Binomial/Bernoulli):** If we collect $n$ new responses...
+    For satisfaction metrics that are proportions (e.g., percentage of pilgrims rating a service as "satisfied" or "highly satisfied"), the Beta-Binomial model is highly suitable and commonly used.
+
+    * **Parameter of Interest ($\theta$):** The true underlying proportion of satisfied pilgrims.
+    * **Prior Distribution (Beta):** We assume the prior belief about $\theta$ follows a Beta distribution, denoted as $Beta(\alpha_0, \beta_0)$.
+        * $\alpha_0 > 0$ and $\beta_0 > 0$ are the parameters of the prior.
+        * An uninformative prior could be $Beta(1, 1)$, which is equivalent to a Uniform(0,1) distribution.
+        * Prior knowledge can be incorporated by setting $\alpha_0$ and $\beta_0$ based on historical data (e.g., $\alpha_0$ = past successes, $\beta_0$ = past failures).
+    * **Likelihood (Binomial/Bernoulli):** If we collect $n$ new responses, and $k$ of them are "satisfied" (successes), the likelihood of observing $k$ successes in $n$ trials is given by the Binomial distribution:
         $$ P(k, n | \theta) = \binom{n}{k} \theta^k (1-\theta)^{n-k} $$
-    * **Posterior Distribution (Beta):** Due to the conjugacy...
+    * **Posterior Distribution (Beta):** Due to the conjugacy between the Beta prior and Binomial likelihood, the posterior distribution of $\theta$ is also a Beta distribution:
         $$ \theta | k, n \sim Beta(\alpha_0 + k, \beta_0 + n - k) $$
-        The mean of this posterior distribution... is $\frac{\alpha_{post}}{\alpha_{post} + \beta_{post}}$.
+        So, the updated parameters are $\alpha_{post} = \alpha_0 + k$ and $\beta_{post} = \beta_0 + n - k$.
+        The mean of this posterior distribution, often used as the point estimate for satisfaction, is $\frac{\alpha_{post}}{\alpha_{post} + \beta_{post}}$.
+
     This conjugacy simplifies calculations significantly.
-    """) # Full English content
+    """)
 
     st.subheader("3.4. Adaptive Sampling Logic & Determining Additional Sample Size")
     st.markdown(r"""
-    The decision to continue sampling is based on whether the current credible interval...
-    * **Stopping Rule:** ... $$ U - L \leq \text{Target Width} $$
-    * **Estimating Required Additional Sample Size (Conceptual):** ...
-    """) # Full English content
+    The decision to continue sampling is based on whether the current credible interval for $\theta$ meets the desired precision.
+
+    * **Stopping Rule:** Stop sampling for a specific metric when (for a $(1-\gamma)\%$ credible interval $[L, U]$):
+        $$ U - L \leq \text{Target Width} $$
+        And/or when the credible interval lies entirely above/below a certain threshold of practical importance.
+
+    * **Estimating Required Additional Sample Size (Conceptual):**
+        While exact formulas for sample size to guarantee a future credible interval width are complex because the width itself is a random variable, several approaches can guide this:
+        1.  **Simulation:** Based on the current posterior $Beta(\alpha_{post}, \beta_{post})$, simulate drawing additional samples of various sizes. For each simulated sample size, calculate the resulting posterior and its credible interval width. This can give a distribution of expected widths for different additional $n$.
+        2.  **Approximation Formulas:** Some researchers have developed approximations... (rest of your English content)
+        3.  **Bayesian Sequential Analysis:** More formal methods...
+        4.  **Pragmatic Batching:** Collect data in smaller, manageable batches...
+
+    The tool should aim to provide guidance on a reasonable next batch size based on the current uncertainty and the distance to the target precision.
+    """)
 
     st.subheader("3.5. Handling Data Heterogeneity Over Time")
     st.markdown("""
-    A key challenge is that service provider performance...
-    * **The "Learning Hyperparameter" (Discount Factor / Power Prior):** ...
+    A key challenge is that service provider performance or general pilgrim satisfaction might change over time. Using historical data uncritically as a prior might be misleading if changes have occurred.
+
+    * **The "Learning Hyperparameter" (Discount Factor / Power Prior):**
+        One way to address this is to down-weight older data...
         $$ \alpha_{prior, t+1} = \delta \times \alpha_t + (1-\delta) \times \alpha_{initial} $$
         $$ \beta_{prior, t+1} = \delta \times \beta_t + (1-\delta) \times \beta_{initial} $$
-    * **Change-Point Detection:** ...
-    * **Hierarchical Bayesian Models (Advanced):** ...
-    """) # Full English content
+        Where $(\alpha_{initial}, \beta_{initial})$ could be parameters of a generic, uninformative prior... (rest of your English content)
+
+    * **Change-Point Detection:** Periodically, statistical tests can be run...
+    * **Hierarchical Bayesian Models (Advanced):** These models can explicitly model variation...
+
+    The choice of method depends on the complexity deemed appropriate and the available data. Starting with a discount factor is often a pragmatic first step.
+    """)
 
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text_methodology_concepts = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
+    <p><b>المنهجية الأساسية: تقدير Bayesian التكيفي (القسم ٣):</b></p>
+    <p>يشرح هذا القسم جوهر المنهجية البايزية التكيفية المقترحة.</p>
+    
     <p><b>المفاهيم الأساسية (القسم ٣.١):</b></p>
-    <p>يتم تعريف المصطلحات الرئيسية مثل التوزيع المسبق، دالة الإمكان، التوزيع اللاحق، وفترة الموثوقية. نظرية Bayes هي:</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_methodology_concepts}</div>", unsafe_allow_html=True)
-    st.latex(r"P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}")
-    
-    arabic_guide_text_methodology_iterative = """
+    <p>يتم تعريف المصطلحات الرئيسية مثل التوزيع المسبق (Prior)، دالة الإمكان (Likelihood)، التوزيع اللاحق (Posterior)، وفترة الموثوقية (Credible Interval). يتم عرض نظرية Bayes:</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.latex(r"P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}") # Display math separately
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p><b>العملية التكرارية (القسم ٣.٢):</b></p>
-    <p>وصف للخطوات الخمس في العملية التكيفية.</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_methodology_iterative}</div>", unsafe_allow_html=True)
-    # Add Arabic explanation for the image if you include one
-
-    arabic_guide_text_methodology_modeling = """
-    <p><b>نمذجة الرضا (القسم ٣.٣):</b></p>
-    <p>التركيز على نموذج Beta-Binomial. الصيغ الرئيسية هي:</p>
-    <p>دالة الإمكان:</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_methodology_modeling}</div>", unsafe_allow_html=True)
-    st.latex(r"P(k, n | \theta) = \binom{n}{k} \theta^k (1-\theta)^{n-k}")
-    st.markdown(f"<div dir='rtl' style='text-align: right;'><p>التوزيع اللاحق:</p></div>", unsafe_allow_html=True)
-    st.latex(r"\theta | k, n \sim Beta(\alpha_0 + k, \beta_0 + n - k)")
-    st.markdown(f"<div dir='rtl' style='text-align: right;'><p>المتوسط اللاحق (التقدير النقطي):</p></div>", unsafe_allow_html=True)
-    st.latex(r"\frac{\alpha_{post}}{\alpha_{post} + \beta_{post}}")
-
-    arabic_guide_text_methodology_sampling = """
-    <p><b>منطق أخذ العينات التكيفي (القسم ٣.٤):</b></p>
-    <p>قاعدة الإيقاف:</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_methodology_sampling}</div>", unsafe_allow_html=True)
-    st.latex(r"U - L \leq \text{Target Width}")
+    <p>وصف للخطوات الخمس في العملية التكيفية: التهيئة، جمع البيانات الأولي، تحديث التوزيع اللاحق، تقييم الدقة، والقرار التكيفي.</p>
     
-    arabic_guide_text_methodology_heterogeneity = """
-    <p><b>التعامل مع عدم تجانس البيانات (القسم ٣.٥):</b></p>
-    <p>معادلات معامل الخصم:</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_methodology_heterogeneity}</div>", unsafe_allow_html=True)
+    <p><b>نمذجة الرضا (القسم ٣.٣):</b></p>
+    <p>يتم التركيز على نموذج Beta-Binomial لتقدير نسب الرضا. يتم عرض معادلات التوزيع المسبق، دالة الإمكان، والتوزيع اللاحق، بالإضافة إلى معادلة تقدير المتوسط اللاحق:</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.latex(r"\frac{\alpha_{post}}{\alpha_{post} + \beta_{post}}") # Display math separately
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
+    <p><b>منطق أخذ العينات التكيفي (القسم ٣.٤):</b></p>
+    <p>شرح لقاعدة الإيقاف وكيفية تقدير حجم العينة الإضافي المطلوب.</p>
+    
+    <p><b>التعامل مع عدم تجانس البيانات بمرور الوقت (القسم ٣.٥):</b></p>
+    <p>مناقشة لتحدي تغير الأداء بمرور الوقت، وطرق مثل "معامل الخصم" لمعالجة ذلك، مع عرض المعادلات ذات الصلة:</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.latex(r"\alpha_{prior, t+1} = \delta \times \alpha_t + (1-\delta) \times \alpha_{initial}")
     st.latex(r"\beta_{prior, t+1} = \delta \times \beta_t + (1-\delta) \times \beta_{initial}")
-
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
+    <p>بالإضافة إلى طرق أخرى مثل كشف نقاط التغيير ونماذج Bayesian الهرمية.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def implementation_roadmap():
     st.header("4. Implementation Roadmap (Conceptual)")
@@ -261,54 +306,81 @@ def implementation_roadmap():
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p><b>خارطة طريق التنفيذ (القسم ٤):</b></p>
-    <p>يعرض هذا القسم المراحل والخطوات الرئيسية المقترحة لتنفيذ إطار تقدير Bayesian التكيفي.</p>
-    <p>(يرجى الرجوع إلى الجدول الإنجليزي أعلاه للحصول على التفاصيل الكاملة. ستحتاج إلى ترجمة محتويات الجدول للغة العربية)</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text}</div>", unsafe_allow_html=True)
+    <p>يعرض هذا القسم المراحل والخطوات الرئيسية المقترحة لتنفيذ إطار تقدير Bayesian التكيفي. يتم تقديمها في جدول يوضح كل مرحلة، والخطوات ضمنها، ووصف لكل خطوة.</p>
+    <p>الجدول أعلاه باللغة الإنجليزية، ويمكن ترجمة محتواه ليتضمن:</p>
+    <ul>
+        <li><b>المرحلة ١: التأسيس والتجربة الأولية</b> (خطوات مثل تحديد المقاييس، إعداد النظام)</li>
+        <li><b>المرحلة ٢: التطوير التكراري والاختبار</b> (خطوات مثل تطوير النموذج، تطوير لوحة التحكم)</li>
+        <li><b>المرحلة ٣: النشر على نطاق واسع والتحسين</b> (خطوات مثل التوسع التدريجي، المراقبة المستمرة)</li>
+    </ul>
+    <p>ملاحظة: إذا كانت هناك رموز رياضية مثل $Beta(1,1)$ في الجدول، فيمكن عرضها بشكل منفصل باستخدام `st.latex()` إذا لم تظهر بشكل صحيح في الترجمة المباشرة للجدول.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 def note_to_practitioners():
     st.header("5. Note to Practitioners")
 
     st.subheader("5.1. Benefits of the Bayesian Adaptive Approach")
     st.markdown("""
-    * **Efficiency:** Targets sampling effort where it's most needed...
-    * **Adaptability:** Responds to incoming data...
-    (Full English content from your app)
+    * **Efficiency:** Targets sampling effort where it's most needed, potentially reducing overall sample sizes compared to fixed methods while achieving desired precision.
+    * **Adaptability:** Responds to incoming data, making it suitable for dynamic environments where satisfaction might fluctuate or where initial knowledge is low.
+    * **Formal Use of Prior Knowledge:** Allows systematic incorporation of historical data or expert insights, which can be particularly useful with sparse initial data for new services or specific subgroups.
+    * **Intuitive Uncertainty Quantification:** Credible intervals offer a direct probabilistic interpretation of the parameter's range, which can be easier for stakeholders to understand than frequentist confidence intervals.
+    * **Rich Output:** Provides a full posterior distribution for each parameter, offering more insight than just a point estimate and an interval.
     """)
 
     st.subheader("5.2. Limitations and Considerations")
     st.markdown("""
-    * **Complexity:** Bayesian methods can be conceptually more demanding...
-    (Full English content from your app)
+    * **Complexity:** Bayesian methods can be conceptually more demanding than traditional frequentist approaches. Implementation requires specialized knowledge.
+    * **Prior Selection:** The choice of prior distribution can influence posterior results, especially with small sample sizes. This requires careful justification and transparency. While "uninformative" priors aim to minimize this influence, truly uninformative priors are not always straightforward.
+    * **Computational Cost:** While Beta-Binomial models are computationally simple, more complex Bayesian models (e.g., hierarchical models, models requiring MCMC simulation) can be computationally intensive.
+    * **Interpretation Differences:** Practitioners familiar with frequentist statistics need to understand the different interpretations of Bayesian outputs (e.g., credible intervals vs. confidence intervals).
+    * **"Black Box" Perception:** If not explained clearly, the adaptive nature and Bayesian calculations might be perceived as a "black box" by those unfamiliar with the methods. Clear communication is key.
     """)
 
     st.subheader("5.3. Key Assumptions")
     st.markdown("""
-    * **Representativeness of Samples:** Each batch of collected data...
-    (Full English content from your app)
+    * **Representativeness of Samples:** Each batch of collected data is assumed to be representative of the (sub)population of interest *at that point in time*. Sampling biases will affect the validity of estimates.
+    * **Model Appropriateness:** The chosen likelihood and prior distributions should reasonably reflect the data-generating process and existing knowledge. For satisfaction proportions, the Beta-Binomial model is often robust.
+    * **Stability (or Modeled Change):** The underlying parameter being measured (e.g., satisfaction rate) is assumed to be relatively stable between iterative updates within a survey wave, OR changes are explicitly modeled (e.g., via discount factors or dynamic models). Rapid, unmodeled fluctuations can be challenging.
+    * **Accurate Data:** Assumes responses are truthful and accurately recorded.
     """)
 
     st.subheader("5.4. Practical Recommendations")
     st.markdown("""
-    * **Start Simple:** Begin with core satisfaction metrics...
-    (Full English content from your app)
+    * **Start Simple:** Begin with core satisfaction metrics and simple models (like Beta-Binomial). Complexity can be added iteratively as experience is gained.
+    * **Invest in Training:** Ensure that the team involved in implementing and interpreting the results has adequate training in Bayesian statistics.
+    * **Transparency is Key:** Document choices for priors, models, and adaptive rules. Perform sensitivity analyses to understand the impact of different prior choices, especially in early stages or with limited data.
+    * **Regular Review and Validation:** Periodically review the performance of the models. Compare Bayesian estimates with those from traditional methods if possible, especially during a transition period. Validate assumptions.
+    * **Stakeholder Communication:** Develop clear ways to communicate the methodology, its benefits, and the interpretation of results to stakeholders who may not be statisticians.
+    * **Pilot Thoroughly:** Before full-scale implementation, conduct thorough pilot studies to refine the process, test the technology, and identify unforeseen challenges.
     """)
 
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p><b>ملاحظة للممارسين (القسم ٥):</b></p>
     <p>هذا القسم موجه للممارسين ويقدم نظرة عامة على جوانب مختلفة من النهج المقترح.</p>
-    <p><b>٥.١ فوائد النهج:</b> (اشرح الفوائد مثل الكفاءة، القدرة على التكيف، إلخ)</p>
-    <p><b>٥.٢ القيود والاعتبارات:</b> (ناقش التعقيد، اختيار التوزيع المسبق، إلخ)</p>
-    <p><b>٥.٣ الافتراضات الرئيسية:</b> (اذكر الافتراضات مثل تمثيلية العينات، ملاءمة النموذج، إلخ)</p>
-    <p><b>٥.٤ التوصيات العملية:</b> (قدم نصائح مثل البدء ببساطة، التدريب، الشفافية، إلخ)</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text}</div>", unsafe_allow_html=True)
-
+    
+    <p><b>فوائد نهج Bayesian التكيفي (القسم ٥.١):</b></p>
+    <p>يتم تفصيل المزايا مثل الكفاءة، القدرة على التكيف، الاستخدام الرسمي للمعرفة المسبقة، قياس عدم اليقين البديهي، والمخرجات الغنية.</p>
+    
+    <p><b>القيود والاعتبارات (القسم ٥.٢):</b></p>
+    <p>تناقش التحديات المحتملة مثل التعقيد، أهمية اختيار التوزيع المسبق، التكلفة الحسابية، اختلافات التفسير، وتصور "الصندوق الأسود".</p>
+    
+    <p><b>الافتراضات الرئيسية (القسم ٥.٣):</b></p>
+    <p>تُسرد الافتراضات الأساسية التي تعتمد عليها المنهجية، مثل تمثيلية العينات، ملاءمة النموذج، استقرار المعلمة (أو نمذجة التغيير)، ودقة البيانات.</p>
+    
+    <p><b>التوصيات العملية (القسم ٥.٤):</b></p>
+    <p>تُقدم نصائح عملية للتنفيذ الناجح، بما في ذلك البدء ببساطة، الاستثمار في التدريب، أهمية الشفافية، المراجعة والتحقق المنتظم، التواصل مع أصحاب المصلحة، وإجراء تجربة أولية شاملة.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def interactive_illustration():
     st.header("6. Interactive Illustration: Beta-Binomial Model")
@@ -322,16 +394,10 @@ def interactive_illustration():
     with col1:
         st.subheader("Prior Beliefs")
         st.markdown("The Beta distribution $Beta(\\alpha, \\beta)$ is a common prior for proportions. $\\alpha$ can be thought of as prior 'successes' and $\\beta$ as prior 'failures'. $Beta(1,1)$ is a uniform (uninformative) prior.")
-        prior_alpha = st.slider("Prior Alpha (α₀)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_a_eng_v3")
-        prior_beta = st.slider("Prior Beta (β₀)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_b_eng_v3")
-        
-        # Calculate prior_mean ensuring denominator is not zero
-        if (prior_alpha + prior_beta) > 0:
-            prior_mean = prior_alpha / (prior_alpha + prior_beta)
-        else:
-            prior_mean = 0 # Or handle as an error/undefined case
+        prior_alpha = st.slider("Prior Alpha (α₀)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_a_eng")
+        prior_beta = st.slider("Prior Beta (β₀)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_b_eng")
+        prior_mean = prior_alpha / (prior_alpha + prior_beta) if (prior_alpha + prior_beta) > 0 else 0
         st.write(f"Prior Mean: {prior_mean:.3f}")
-        
         prior_ci = get_credible_interval(prior_alpha, prior_beta)
         st.write(f"95% Credible Interval (Prior): [{prior_ci[0]:.3f}, {prior_ci[1]:.3f}], Width: {abs(prior_ci[1]-prior_ci[0]):.3f}")
 
@@ -339,46 +405,30 @@ def interactive_illustration():
     with col2:
         st.subheader("New Survey Data (Likelihood)")
         st.markdown("Enter the results from a new batch of surveys.")
-        num_surveys = st.slider("Number of New Surveys (n)", min_value=1, max_value=500, value=50, step=1, key="surveys_n_eng_v3")
-        num_satisfied = st.slider("Number Satisfied in New Surveys (k)", min_value=0, max_value=num_surveys, value=int(num_surveys/2), step=1, key="surveys_k_eng_v3")
-        
-        if num_surveys > 0:
-            observed_satisfaction = num_satisfied / num_surveys
-        else:
-            observed_satisfaction = 0 # Or handle as undefined
-        st.write(f"Observed Satisfaction in New Data: {observed_satisfaction:.3f}")
+        num_surveys = st.slider("Number of New Surveys (n)", min_value=1, max_value=500, value=50, step=1, key="surveys_n_eng")
+        num_satisfied = st.slider("Number Satisfied in New Surveys (k)", min_value=0, max_value=num_surveys, value=int(num_surveys/2), step=1, key="surveys_k_eng")
+        st.write(f"Observed Satisfaction in New Data: {num_satisfied/num_surveys if num_surveys > 0 else 0:.3f}")
 
     st.markdown("---")
     st.subheader("Posterior Beliefs (After Update)")
     posterior_alpha, posterior_beta = update_beta_parameters(prior_alpha, prior_beta, num_satisfied, num_surveys - num_satisfied)
     st.markdown(f"The posterior distribution is $Beta(\\alpha_0 + k, \\beta_0 + n - k) = Beta({posterior_alpha:.1f}, {posterior_beta:.1f})$")
 
-    if (posterior_alpha + posterior_beta) > 0:
-        posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
-    else:
-        posterior_mean = 0
+    posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta) if (posterior_alpha + posterior_beta) > 0 else 0
     st.write(f"Posterior Mean: {posterior_mean:.3f}")
-    
     posterior_ci = get_credible_interval(posterior_alpha, posterior_beta)
     st.write(f"95% Credible Interval (Posterior): [{posterior_ci[0]:.3f}, {posterior_ci[1]:.3f}], Width: {abs(posterior_ci[1]-posterior_ci[0]):.3f}")
 
-    target_width = st.number_input("Target Credible Interval Width for Stopping", min_value=0.01, max_value=1.0, value=0.10, step=0.01, key="target_w_eng_v3")
+    target_width = st.number_input("Target Credible Interval Width for Stopping", min_value=0.01, max_value=1.0, value=0.10, step=0.01, key="target_w_eng")
     current_width = abs(posterior_ci[1]-posterior_ci[0]) if posterior_ci[0] is not None and posterior_ci[1] is not None else float('inf')
     
-    # Ensure current_width is a finite number before comparison
-    if np.isfinite(current_width):
-        if current_width <= target_width and (posterior_alpha > 0 or posterior_beta > 0):
-            st.success(f"Target precision met! Current width ({current_width:.3f}) ≤ Target width ({target_width:.3f}).")
-        elif posterior_alpha == 0 and posterior_beta == 0 and current_width == 0.0 : # Special case for Beta(0,0) interval being (0,0)
-            st.warning(f"Posterior parameters are zero. Check inputs.")
-        else:
-            st.warning(f"Target precision not yet met. Current width ({current_width:.3f}) > Target width ({target_width:.3f}). Consider more samples.")
+    if current_width <= target_width and (posterior_alpha > 0 or posterior_beta > 0):
+        st.success(f"Target precision met! Current width ({current_width:.3f}) ≤ Target width ({target_width:.3f}).")
     else:
-        st.warning("Current width is undefined. Check inputs.")
-
+        st.warning(f"Target precision not yet met. Current width ({current_width:.3f}) > Target width ({target_width:.3f}). Consider more samples.")
 
     fig, ax = plt.subplots()
-    if prior_alpha > 0 and prior_beta > 0: plot_beta_distribution(prior_alpha, prior_beta, "Prior", "المسبق", ax)
+    if prior_alpha > 0 and prior_beta > 0: plot_beta_distribution(prior_alpha, prior_beta, "Prior", "المسبق", ax) # Pass both labels
     if posterior_alpha > 0 and posterior_beta > 0: plot_beta_distribution(posterior_alpha, posterior_beta, "Posterior", "اللاحق", ax)
     ax.set_title("Prior and Posterior Distributions of Satisfaction Rate")
     ax.set_xlabel("Satisfaction Rate (θ)")
@@ -399,26 +449,23 @@ def interactive_illustration():
     old_posterior_beta = posterior_beta
 
     discount_factor = st.slider("Discount Factor (δ) for Old Data", 0.0, 1.0, 0.8, 0.05,
-                                  help="Controls weight of old data. 1.0 = full weight, 0.0 = discard old data, rely only on initial prior.", key="discount_eng_v3")
+                                  help="Controls weight of old data. 1.0 = full weight, 0.0 = discard old data, rely only on initial prior.", key="discount_eng")
 
-    initial_prior_alpha = st.number_input("Initial Prior Alpha (for new period if discounting heavily)", 0.1, value=1.0, step=0.1, key="init_prior_a_eng_v3")
-    initial_prior_beta = st.number_input("Initial Prior Beta (for new period if discounting heavily)", 0.1, value=1.0, step=0.1, key="init_prior_b_eng_v3")
+    initial_prior_alpha = st.number_input("Initial Prior Alpha (for new period if discounting heavily)", 0.1, value=1.0, step=0.1, key="init_prior_a_eng")
+    initial_prior_beta = st.number_input("Initial Prior Beta (for new period if discounting heavily)", 0.1, value=1.0, step=0.1, key="init_prior_b_eng")
 
     new_prior_alpha = discount_factor * old_posterior_alpha + (1 - discount_factor) * initial_prior_alpha
     new_prior_beta = discount_factor * old_posterior_beta + (1 - discount_factor) * initial_prior_beta
 
     st.write(f"New Prior for Next Period: $Beta({new_prior_alpha:.2f}, {new_prior_beta:.2f})$")
-    if (new_prior_alpha + new_prior_beta) > 0:
-        new_prior_mean = new_prior_alpha / (new_prior_alpha + new_prior_beta)
-    else:
-        new_prior_mean = 0
+    new_prior_mean = new_prior_alpha / (new_prior_alpha + new_prior_beta) if (new_prior_alpha + new_prior_beta) > 0 else 0
     st.write(f"Mean of New Prior: {new_prior_mean:.3f}")
 
     fig2, ax2 = plt.subplots()
     if old_posterior_alpha > 0 and old_posterior_beta > 0: plot_beta_distribution(old_posterior_alpha, old_posterior_beta, "Old Posterior (Data from T-1)", "اللاحق القديم (بيانات من T-1)", ax2)
     if initial_prior_alpha > 0 and initial_prior_beta > 0: plot_beta_distribution(initial_prior_alpha, initial_prior_beta, "Fixed Initial Prior", "المسبق الأولي الثابت", ax2)
     
-    new_prior_label_en = f"New Prior (δ={discount_factor:.1f})" # For legend
+    new_prior_label_en = f"New Prior (δ={discount_factor:.1f})"
     new_prior_label_ar = f"المسبق الجديد (δ={discount_factor:.1f})"
     if new_prior_alpha > 0 and new_prior_beta > 0: plot_beta_distribution(new_prior_alpha, new_prior_beta, new_prior_label_en, new_prior_label_ar, ax2)
     
@@ -432,18 +479,20 @@ def interactive_illustration():
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p><b>التوضيح التفاعلي (القسم ٦):</b></p>
-    <p>يوفر هذا القسم أدوات تفاعلية لفهم كيفية تحديث توزيع Beta المسبق إلى توزيع لاحق مع بيانات جديدة.</p>
-    <p>الصيغة الأساسية للتوزيع اللاحق هي:</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text}</div>", unsafe_allow_html=True)
+    <p>يوفر هذا القسم أدوات تفاعلية لفهم كيفية تحديث توزيع Beta المسبق إلى توزيع لاحق مع بيانات جديدة. يمكنك تعديل معلمات التوزيع المسبق (alpha و beta)، وإدخال نتائج مسح جديدة (عدد الاستطلاعات وعدد الراضين)، ورؤية كيف يتغير التوزيع اللاحق والمتوسط وفترة الموثوقية.</p>
+    <p>الجزء الثاني يوضح تأثير "عامل الخصم" (Discount Factor &delta;) على البيانات القديمة عند تكوين توزيع مسبق لفترة جديدة.</p>
+    <p>يتم عرض الصيغ الرياضية المستخدمة في النص الإنجليزي أعلاه. على سبيل المثال، التوزيع اللاحق يتبع:</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.latex(r"Beta(\alpha_0 + k, \beta_0 + n - k)")
-    arabic_guide_text_cont = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p>حيث &alpha;<sub>0</sub> و &beta;<sub>0</sub> هي معلمات التوزيع المسبق، k عدد الراضين، و n إجمالي عدد الاستطلاعات الجديدة.</p>
-    <p>(أكمل هذا النص بترجمتك وشرحك الكامل للأجزاء التفاعلية.)</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text_cont}</div>", unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def conclusion_content():
@@ -459,15 +508,21 @@ def conclusion_content():
     # --- Arabic Guide ---
     st.markdown("---")
     st.subheader("دليل توضيحي باللغة العربية")
-    arabic_guide_text = """
+    st.markdown("""
+    <div dir='rtl' style='text-align: right;'>
     <p><b>الخلاصة (القسم ٧):</b></p>
-    <p>يلخص هذا القسم الفوائد الرئيسية لإطار تقدير Bayesian التكيفي المقترح، ويوصي بالبدء بمشروع تجريبي.</p>
-    <p>(أكمل هذا النص بترجمتك الكاملة.)</p>
-    """
-    st.markdown(f"<div dir='rtl' style='text-align: right;'>{arabic_guide_text}</div>", unsafe_allow_html=True)
+    <p>يلخص هذا القسم الفوائد الرئيسية لإطار تقدير Bayesian التكيفي المقترح، مع التأكيد على قدرته على توفير رؤى أكثر دقة وفي الوقت المناسب لتحسين تجربة الحج. يقر المقترح بأن المنهجية تتطلب تنفيذًا دقيقًا، لكنه يسلط الضوء على الفوائد طويلة الأجل. يوصي بالبدء بمشروع تجريبي.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # --- Streamlit App Structure ---
+# Language selection can be added here if desired, but for simplicity, we'll keep it English first
+# and add Arabic explanations below each English section as requested.
+
+# For now, we remove the language selection and current_lang logic
+# to strictly follow the "English app + Arabic guide below" structure.
+
 st.title("Proposal: Adaptive Bayesian Estimation for Pilgrim Satisfaction Surveys")
 
 PAGES = {
@@ -481,12 +536,14 @@ PAGES = {
 }
 
 st.sidebar.title("Proposal Sections")
-selection = st.sidebar.radio("Go to", list(PAGES.keys()), key="main_nav_guide_v1")
+# Use the English keys for the radio button options
+selection = st.sidebar.radio("Go to", list(PAGES.keys()), key="main_nav_eng_only")
 
 page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
+# Defaulting to English sidebar info as per "original English app"
 st.sidebar.info(
     "This app presents a proposal for using Bayesian adaptive estimation "
     "for Hajj pilgrim satisfaction surveys. Developed by Dr. Mohammad Nabhan."
