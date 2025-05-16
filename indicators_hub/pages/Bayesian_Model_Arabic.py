@@ -342,8 +342,7 @@ The choice of method depends on the complexity deemed appropriate and the availa
             ["المرحلة الثالثة: النشر على نطاق واسع والتحسين", "٥. التوسع التدريجي ونمذجة عدم التجانس", "التوسع التدريجي للنظام التكيفي عبر المزيد من مناطق الاستطلاع/مقدمي الخدمات. تنفيذ أو تحسين آليات التعامل مع عدم تجانس البيانات بمرور الوقت (على سبيل المثال، عوامل الخصم، مراقبة نقاط التغيير)."],
             ["المرحلة الثالثة: النشر على نطاق واسع والتحسين", "٦. المراقبة المستمرة والتحسين", "مراقبة أداء النظام وكفاءة الموارد وجودة التقديرات بشكل مستمر. تحسين النماذج والتوزيعات المسبقة والقواعد التكيفية بناءً على التعلم المستمر والملاحظات."]
         ]
-    },
-
+    }, # <<< CRITICAL COMMA was ensured here in the previous thought, re-verify
 
     # Section 5
     "sec5_title": {"en": "5. Note to Practitioners", "ar": "٥. ملاحظة للممارسين"},
@@ -434,8 +433,8 @@ The choice of method depends on the complexity deemed appropriate and the availa
     "sec6_plot1_title_base": {"en": "Prior and Posterior Distributions of Satisfaction Rate", "ar": "التوزيعات المسبقة واللاحقة لمعدل الرضا"},
     "sec6_plot_xlabel_base": {"en": "Satisfaction Rate (θ)", "ar": "معدل الرضا (θ)"},
     "sec6_plot_ylabel_base": {"en": "Density", "ar": "الكثافة"},
-    "sec6_plot_prior_legend_base": {"en": "Prior", "ar": "المسبق"},
-    "sec6_plot_posterior_legend_base": {"en": "Posterior", "ar": "اللاحق"},
+    "sec6_plot_prior_legend_base": {"en": "Prior", "ar": "المسبق"}, # Simplified
+    "sec6_plot_posterior_legend_base": {"en": "Posterior", "ar": "اللاحق"}, # Simplified
     "sec6_discounting_subheader": {"en": "Conceptual Illustration: Impact of Discounting Older Data",
                                    "ar": "توضيح مفاهيمي: تأثير خصم البيانات القديمة"},
     "sec6_discounting_md": {"en": """
@@ -458,9 +457,9 @@ An 'Initial Prior' (e.g., $Beta(1,1)$) represents a baseline, less informative b
                               "ar": "التوزيع المسبق الجديد للفترة التالية: $Beta({new_prior_alpha:.2f}, {new_prior_beta:.2f})$"},
     "sec6_new_prior_mean_label": {"en": "Mean of New Prior", "ar": "متوسط التوزيع المسبق الجديد"},
     "sec6_plot2_title_base": {"en": "Forming a New Prior with Discounting", "ar": "تشكيل توزيع مسبق جديد مع الخصم"},
-    "sec6_plot2_old_posterior_legend_base": {"en": "Old Posterior (Data from T-1)", "ar": "التوزيع اللاحق القديم (بيانات من T-1)"},
-    "sec6_plot2_fixed_prior_legend_base": {"en": "Fixed Initial Prior", "ar": "التوزيع المسبق الأولي الثابت"},
-    "sec6_plot2_new_prior_legend_base": {"en": "New Prior", "ar": "التوزيع المسبق الجديد"},
+    "sec6_plot2_old_posterior_legend_base": {"en": "Old Posterior (Data from T-1)", "ar": "التوزيع اللاحق القديم (بيانات من T-1)"}, # Simplified
+    "sec6_plot2_fixed_prior_legend_base": {"en": "Fixed Initial Prior", "ar": "التوزيع المسبق الأولي الثابت"}, # Simplified
+    "sec6_plot2_new_prior_legend_base": {"en": "New Prior", "ar": "التوزيع المسبق الجديد"}, # Simplified
 
 
     # Section 7
@@ -481,42 +480,54 @@ We recommend proceeding with a pilot project to demonstrate the practical benefi
 }
 
 # --- Helper Functions ---
-current_lang = "en" # Default language
+current_lang = "en"
 
 def get_text(key):
-    """Retrieves text in the currently selected language."""
     return LANGUAGES[key][current_lang]
 
-def render_md(text_key, unsafe_html=True): # Set unsafe_html to True by default for div tags
-    """Renders markdown text, handling RTL for Arabic by checking if the AR string starts with <div dir='rtl'>."""
-    text_content = get_text(text_key)
-    # For Arabic, we assume the text_content itself contains the <div dir='rtl'> wrapper
+def render_md_direct(text_content, unsafe_html=True): # For strings already formatted or not needing <div dir='rtl'>
+    # If the text_content is already pre-wrapped with <div dir='rtl'> from LANGUAGES, it's fine.
+    # If it's an English string, or an Arabic string that needs specific formatting
+    # (like from .format()) and doesn't have the div, this function handles it.
+    if current_lang == "ar" and not text_content.strip().startswith("<div dir='rtl'>"):
+        # Check if the content is simple text or already HTML-like for LaTeX
+        if "$" in text_content or "<" in text_content : # Heuristic for LaTeX or existing HTML structure
+             st.markdown(f"<div dir='rtl' style='text-align: right;'>{text_content}</div>", unsafe_allow_html=True)
+        else: # Simple text
+             st.markdown(f"<div dir='rtl'>{text_content}</div>", unsafe_allow_html=True)
+
+    else: # English or already wrapped Arabic
+        st.markdown(text_content, unsafe_allow_html=unsafe_html)
+
+
+def render_md(text_key, unsafe_html=True):
+    text_content = get_text(text_key) # This content from LANGUAGES for AR is pre-wrapped
     st.markdown(text_content, unsafe_allow_html=unsafe_html)
 
 
 def render_header(text_key, level=1):
     text_content = get_text(text_key)
     header_tag = f"h{level}"
+    # For headers, we apply RTL directly for simplicity as they are usually short
     if current_lang == "ar":
-        st.markdown(f"<{header_tag} dir='rtl'>{text_content}</{header_tag}>", unsafe_allow_html=True)
+        st.markdown(f"<{header_tag} dir='rtl' style='text-align: right;'>{text_content}</{header_tag}>", unsafe_allow_html=True)
     else:
         st.markdown(f"<{header_tag}>{text_content}</{header_tag}>", unsafe_allow_html=True)
 
 
 def plot_beta_distribution(alpha, beta, base_label_key, ax, is_discounted_label=False, discount_factor_val=None):
-    """Plots a Beta distribution with internationalized and formatted label."""
     base_label = get_text(base_label_key)
     if is_discounted_label:
-        # For Arabic, ensure parameters are displayed correctly in an LTR context if needed,
-        # though f-string will embed them as is.
         label = f"{base_label} (δ={discount_factor_val:.1f}, α={alpha:.2f}, β={beta:.2f})"
     else:
         label = f"{base_label} (α={alpha:.2f}, β={beta:.2f})"
 
-    x_vals = np.linspace(0, 1, 500)
+    x_vals = np.linspace(0.001, 0.999, 500) # Avoid 0 and 1 for pdf if alpha/beta are small
     y_vals = stats.beta.pdf(x_vals, alpha, beta)
     ax.plot(x_vals, y_vals, label=label)
     ax.fill_between(x_vals, y_vals, alpha=0.2)
+    ax.set_ylim(bottom=0) # Ensure y-axis starts at 0
+
 
 def update_beta_parameters(prior_alpha, prior_beta, successes, failures):
     posterior_alpha = prior_alpha + successes
@@ -524,12 +535,14 @@ def update_beta_parameters(prior_alpha, prior_beta, successes, failures):
     return posterior_alpha, posterior_beta
 
 def get_credible_interval(alpha, beta, conf_level=0.95):
-    if alpha <= 0 or beta <= 0:
-        return (0.0, 0.0) # Return float tuple
-    return stats.beta.interval(conf_level, alpha, beta)
+    if alpha <=0 or beta <=0: # check for valid parameters
+        return (0.0,0.0)
+    try:
+        return stats.beta.interval(conf_level, alpha, beta)
+    except ValueError:
+        return (0.0,0.0) # Handle potential math domain errors if alpha/beta become problematic
 
 # --- Proposal Content Functions ---
-
 def introduction_objectives():
     render_header("sec1_title", level=2)
     render_md("sec1_intro_md")
@@ -539,10 +552,8 @@ def introduction_objectives():
 def challenges_addressed():
     render_header("sec2_title", level=2)
     render_md("sec2_intro_md")
-
     render_header("sec2_challenge5_header", level=3)
     render_md("sec2_challenge5_md")
-
     render_header("sec2_challenge1_header", level=3)
     render_md("sec2_challenge1_md")
     render_header("sec2_challenge2_header", level=3)
@@ -552,192 +563,146 @@ def challenges_addressed():
     render_header("sec2_challenge4_header", level=3)
     render_md("sec2_challenge4_md")
 
-
 def bayesian_adaptive_methodology():
     render_header("sec3_title", level=2)
     render_md("sec3_intro_md")
-
     render_header("sec3_concepts_subheader", level=3)
     render_md("sec3_concepts_md")
-
     render_header("sec3_iterative_subheader", level=3)
     render_md("sec3_iterative_md")
-    # If you have a locally saved image, you can add it like this:
-    # try:
-    # st.image("your_local_image.png", caption=get_text("sec3_image_caption")) # Add sec3_image_caption to LANGUAGES
-    # except FileNotFoundError:
-    # st.warning("Local image not found. Please add 'your_local_image.png' to the app directory.")
-
-
     render_header("sec3_modeling_subheader", level=3)
     render_md("sec3_modeling_md")
-
     render_header("sec3_sampling_logic_subheader", level=3)
     render_md("sec3_sampling_logic_md")
-
     render_header("sec3_heterogeneity_subheader", level=3)
     render_md("sec3_heterogeneity_md")
 
 def implementation_roadmap():
     render_header("sec4_title", level=2)
     render_md("sec4_intro_md")
-
     roadmap_df_data = LANGUAGES["roadmap_data"][current_lang]
     df_roadmap = pd.DataFrame(roadmap_df_data, columns=[
         get_text("roadmap_phase_col"),
         get_text("roadmap_step_col"),
         get_text("roadmap_desc_col")
     ])
-    # Display DataFrame with st.markdown to control RTL for Arabic table headers/content if necessary
     if current_lang == 'ar':
-        st.markdown(f"<div dir='rtl'>{df_roadmap.to_html(index=False, classes='dataframe')}</div>", unsafe_allow_html=True)
+        # Forcing RTL for dataframe by converting to HTML
+        # Adding some basic styling for better table appearance
+        html_table = df_roadmap.to_html(index=False, classes='dataframe table table-striped', border=0)
+        st.markdown(f"<div dir='rtl' style='text-align: right;'>{html_table}</div>", unsafe_allow_html=True)
     else:
         st.dataframe(df_roadmap, hide_index=True, use_container_width=True)
 
-
 def note_to_practitioners():
     render_header("sec5_title", level=2)
-
     render_header("sec5_benefits_subheader", level=3)
     render_md("sec5_benefits_md")
-
     render_header("sec5_limitations_subheader", level=3)
     render_md("sec5_limitations_md")
-
     render_header("sec5_assumptions_subheader", level=3)
     render_md("sec5_assumptions_md")
-
     render_header("sec5_recommendations_subheader", level=3)
     render_md("sec5_recommendations_md")
 
 def interactive_illustration():
     render_header("sec6_title", level=2)
     render_md("sec6_intro_md")
-
     st.markdown("---")
     col1, col2 = st.columns(2)
 
     with col1:
         render_header("sec6_prior_subheader", level=3)
         render_md("sec6_prior_md")
-        prior_alpha = st.slider(get_text("sec6_prior_alpha_label"), min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_a")
-        prior_beta = st.slider(get_text("sec6_prior_beta_label"), min_value=0.1, max_value=50.0, value=1.0, step=0.1, key="prior_b")
-        prior_mean = prior_alpha / (prior_alpha + prior_beta)
-        st.write(f"{get_text('sec6_prior_mean_label')}: {prior_mean:.3f}")
+        prior_alpha = st.slider(get_text("sec6_prior_alpha_label"), 0.1, 50.0, 1.0, 0.1, key="prior_a")
+        prior_beta = st.slider(get_text("sec6_prior_beta_label"), 0.1, 50.0, 1.0, 0.1, key="prior_b")
+        prior_mean = prior_alpha / (prior_alpha + prior_beta) if (prior_alpha + prior_beta) > 0 else 0
+        render_md_direct(f"{get_text('sec6_prior_mean_label')}: {prior_mean:.3f}")
         prior_ci = get_credible_interval(prior_alpha, prior_beta)
-        st.write(f"{get_text('sec6_prior_ci_label')}: [{prior_ci[0]:.3f}, {prior_ci[1]:.3f}], {get_text('sec6_width_label')}: {prior_ci[1]-prior_ci[0]:.3f}")
-
+        render_md_direct(f"{get_text('sec6_prior_ci_label')}: [{prior_ci[0]:.3f}, {prior_ci[1]:.3f}], {get_text('sec6_width_label')}: {abs(prior_ci[1]-prior_ci[0]):.3f}")
 
     with col2:
         render_header("sec6_likelihood_subheader", level=3)
         render_md("sec6_likelihood_md")
-        num_surveys = st.slider(get_text("sec6_surveys_n_label"), min_value=1, max_value=500, value=50, step=1, key="surveys_n")
-        num_satisfied = st.slider(get_text("sec6_surveys_k_label"), min_value=0, max_value=num_surveys, value=int(num_surveys/2), step=1, key="surveys_k")
-        num_not_satisfied = num_surveys - num_satisfied
-        st.write(f"{get_text('sec6_observed_sat_label')}: {num_satisfied/num_surveys if num_surveys > 0 else 0:.3f}")
+        num_surveys = st.slider(get_text("sec6_surveys_n_label"), 1, 500, 50, 1, key="surveys_n")
+        num_satisfied = st.slider(get_text("sec6_surveys_k_label"), 0, num_surveys, int(num_surveys/2), 1, key="surveys_k")
+        render_md_direct(f"{get_text('sec6_observed_sat_label')}: {num_satisfied/num_surveys if num_surveys > 0 else 0:.3f}")
 
     st.markdown("---")
     render_header("sec6_posterior_subheader", level=3)
-    posterior_alpha, posterior_beta = update_beta_parameters(prior_alpha, prior_beta, num_satisfied, num_not_satisfied)
-
+    posterior_alpha, posterior_beta = update_beta_parameters(prior_alpha, prior_beta, num_satisfied, num_surveys - num_satisfied)
     posterior_dist_text = get_text("sec6_posterior_dist_template").format(posterior_alpha=posterior_alpha, posterior_beta=posterior_beta)
     render_md_direct(posterior_dist_text)
-
-
-    posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
-    st.write(f"{get_text('sec6_posterior_mean_label')}: {posterior_mean:.3f}")
+    posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta) if (posterior_alpha + posterior_beta) > 0 else 0
+    render_md_direct(f"{get_text('sec6_posterior_mean_label')}: {posterior_mean:.3f}")
     posterior_ci = get_credible_interval(posterior_alpha, posterior_beta)
-    st.write(f"{get_text('sec6_posterior_ci_label')}: [{posterior_ci[0]:.3f}, {posterior_ci[1]:.3f}], {get_text('sec6_width_label')}: {posterior_ci[1]-posterior_ci[0]:.3f}")
+    render_md_direct(f"{get_text('sec6_posterior_ci_label')}: [{posterior_ci[0]:.3f}, {posterior_ci[1]:.3f}], {get_text('sec6_width_label')}: {abs(posterior_ci[1]-posterior_ci[0]):.3f}")
 
-    target_width = st.number_input(get_text("sec6_target_width_label"), min_value=0.01, max_value=1.0, value=0.10, step=0.01)
-    current_width = posterior_ci[1] - posterior_ci[0]
+    target_width = st.number_input(get_text("sec6_target_width_label"), 0.01, 1.0, 0.10, 0.01)
+    current_width = abs(posterior_ci[1]-posterior_ci[0]) if posterior_ci[0] is not None and posterior_ci[1] is not None else float('inf')
 
-    if current_width > 0:
-        if current_width <= target_width :
-            st.success(get_text("sec6_target_met_success_template").format(current_width=current_width, target_width=target_width))
-        else:
-            st.warning(get_text("sec6_target_not_met_warning_template").format(current_width=current_width, target_width=target_width))
-    elif prior_alpha > 0 and prior_beta > 0 :
-         st.success(get_text("sec6_target_met_success_template").format(current_width=current_width, target_width=target_width))
-
+    if current_width <= target_width and (posterior_alpha > 0 or posterior_beta > 0) : # Avoid success for alpha=0,beta=0 if it results in 0 width
+        st.success(get_text("sec6_target_met_success_template").format(current_width=current_width, target_width=target_width))
+    else:
+        st.warning(get_text("sec6_target_not_met_warning_template").format(current_width=current_width, target_width=target_width))
 
     fig, ax = plt.subplots()
-    plot_beta_distribution(prior_alpha, prior_beta, "sec6_plot_prior_legend_base", ax)
-    plot_beta_distribution(posterior_alpha, posterior_beta, "sec6_plot_posterior_legend_base", ax)
+    if prior_alpha > 0 and prior_beta > 0: plot_beta_distribution(prior_alpha, prior_beta, "sec6_plot_prior_legend_base", ax)
+    if posterior_alpha > 0 and posterior_beta > 0: plot_beta_distribution(posterior_alpha, posterior_beta, "sec6_plot_posterior_legend_base", ax)
     ax.set_title(get_text("sec6_plot1_title_base"))
     ax.set_xlabel(get_text("sec6_plot_xlabel_base"))
     ax.set_ylabel(get_text("sec6_plot_ylabel_base"))
-    ax.legend()
+    if (prior_alpha > 0 and prior_beta > 0) or (posterior_alpha > 0 and posterior_beta > 0): ax.legend()
     ax.grid(True)
     st.pyplot(fig)
 
     st.markdown("---")
     render_header("sec6_discounting_subheader", level=3)
     render_md("sec6_discounting_md")
-
     old_posterior_alpha = posterior_alpha
     old_posterior_beta = posterior_beta
-
-    discount_factor = st.slider(get_text("sec6_discount_factor_label"), min_value=0.0, max_value=1.0, value=0.8, step=0.05,
-                                 help=get_text("sec6_discount_factor_help"), key="discount_f")
-
-    initial_prior_alpha = st.number_input(get_text("sec6_init_prior_alpha_label"), min_value=0.1, value=1.0, step=0.1, key="init_prior_a_disc")
-    initial_prior_beta = st.number_input(get_text("sec6_init_prior_beta_label"), min_value=0.1, value=1.0, step=0.1, key="init_prior_b_disc")
-
+    discount_factor = st.slider(get_text("sec6_discount_factor_label"), 0.0, 1.0, 0.8, 0.05, help=get_text("sec6_discount_factor_help"), key="discount_f")
+    initial_prior_alpha = st.number_input(get_text("sec6_init_prior_alpha_label"), 0.1, value=1.0, step=0.1, key="init_prior_a_disc")
+    initial_prior_beta = st.number_input(get_text("sec6_init_prior_beta_label"), 0.1, value=1.0, step=0.1, key="init_prior_b_disc")
     new_prior_alpha = discount_factor * old_posterior_alpha + (1 - discount_factor) * initial_prior_alpha
     new_prior_beta = discount_factor * old_posterior_beta + (1 - discount_factor) * initial_prior_beta
-
     new_prior_text = get_text("sec6_new_prior_template").format(new_prior_alpha=new_prior_alpha, new_prior_beta=new_prior_beta)
     render_md_direct(new_prior_text)
-
-    new_prior_mean = new_prior_alpha / (new_prior_alpha + new_prior_beta)
-    st.write(f"{get_text('sec6_new_prior_mean_label')}: {new_prior_mean:.3f}")
+    new_prior_mean = new_prior_alpha / (new_prior_alpha + new_prior_beta) if (new_prior_alpha + new_prior_beta) > 0 else 0
+    render_md_direct(f"{get_text('sec6_new_prior_mean_label')}: {new_prior_mean:.3f}")
 
     fig2, ax2 = plt.subplots()
-    plot_beta_distribution(old_posterior_alpha, old_posterior_beta, "sec6_plot2_old_posterior_legend_base", ax2)
-    plot_beta_distribution(initial_prior_alpha, initial_prior_beta, "sec6_plot2_fixed_prior_legend_base", ax2)
-    plot_beta_distribution(new_prior_alpha, new_prior_beta, "sec6_plot2_new_prior_legend_base", ax2, is_discounted_label=True, discount_factor_val=discount_factor)
+    if old_posterior_alpha > 0 and old_posterior_beta > 0: plot_beta_distribution(old_posterior_alpha, old_posterior_beta, "sec6_plot2_old_posterior_legend_base", ax2)
+    if initial_prior_alpha > 0 and initial_prior_beta > 0: plot_beta_distribution(initial_prior_alpha, initial_prior_beta, "sec6_plot2_fixed_prior_legend_base", ax2)
+    if new_prior_alpha > 0 and new_prior_beta > 0: plot_beta_distribution(new_prior_alpha, new_prior_beta, "sec6_plot2_new_prior_legend_base", ax2, is_discounted_label=True, discount_factor_val=discount_factor)
     ax2.set_title(get_text("sec6_plot2_title_base"))
     ax2.set_xlabel(get_text("sec6_plot_xlabel_base"))
     ax2.set_ylabel(get_text("sec6_plot_ylabel_base"))
-    ax2.legend()
+    if (old_posterior_alpha > 0 and old_posterior_beta > 0) or \
+       (initial_prior_alpha > 0 and initial_prior_beta > 0) or \
+       (new_prior_alpha > 0 and new_prior_beta > 0):
+        ax2.legend()
     ax2.grid(True)
     st.pyplot(fig2)
-
 
 def conclusion():
     render_header("sec7_title", level=2)
     render_md("sec7_conclusion_md")
 
-# --- Helper function for direct markdown rendering (needed for formatted strings) ---
-def render_md_direct(text_content, unsafe_html=True):
-    if current_lang == "ar" and not text_content.startswith("<div dir='rtl'>"):
-         # Heuristic: if it's Arabic and doesn't already have RTL div, wrap it.
-         # This is mainly for strings coming from .format()
-        st.markdown(f"<div dir='rtl'>{text_content}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(text_content, unsafe_allow_html=unsafe_html)
-
 # --- Streamlit App Structure ---
-
-# Language Selection in Sidebar
 selected_lang_option = st.sidebar.selectbox(
-    label="Select Language / اختر اللغة", # This label is bilingual for initial display
+    label="Select Language / اختر اللغة",
     options=["English", "العربية"],
     index=0
 )
 current_lang = "ar" if selected_lang_option == "العربية" else "en"
 
-
-# App Title
 title_text = get_text("app_title")
 if current_lang == "ar":
     st.markdown(f"<h1 style='text-align: center; direction: rtl;'>{title_text}</h1>", unsafe_allow_html=True)
 else:
     st.markdown(f"<h1 style='text-align: center;'>{title_text}</h1>", unsafe_allow_html=True)
 
-
-# Sidebar Navigation
 PAGES_MAPPING = {
     "sec1_title": introduction_objectives,
     "sec2_title": challenges_addressed,
@@ -747,15 +712,11 @@ PAGES_MAPPING = {
     "sec6_title": interactive_illustration,
     "sec7_title": conclusion
 }
-
 sidebar_options_keys = list(PAGES_MAPPING.keys())
 sidebar_display_options = [get_text(key) for key in sidebar_options_keys]
 
-
 st.sidebar.title(get_text("sidebar_title"))
-# Use a unique key for the radio button to avoid issues if options change
 selected_display_text = st.sidebar.radio("navigation_radio", sidebar_display_options, key=f"nav_radio_{current_lang}")
-
 
 selected_key_for_page = None
 for key, display_text in zip(sidebar_options_keys, sidebar_display_options):
@@ -766,7 +727,6 @@ for key, display_text in zip(sidebar_options_keys, sidebar_display_options):
 if selected_key_for_page:
     page_function_to_call = PAGES_MAPPING[selected_key_for_page]
     page_function_to_call()
-
 
 st.sidebar.markdown("---")
 st.sidebar.info(get_text("sidebar_info"))
