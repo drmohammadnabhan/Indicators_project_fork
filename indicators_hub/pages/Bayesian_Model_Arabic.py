@@ -10,33 +10,53 @@ st.set_page_config(page_title="Adaptive Bayesian Estimation Proposal", layout="w
 # --- Global variable for language ---
 current_lang = "en" # Default
 
-# --- MathJax Configuration ---
+# --- MathJax Configuration (Revised) ---
 # This script tells MathJax to look for $...$ and \(...\) for inline math,
 # and $$...$$ and \[...\] for display math.
 # It will be injected once at the beginning of the app.
-mathjax_script = """
+# Added a function to explicitly queue a MathJax typeset operation.
+mathjax_script_and_trigger = """
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\\[','\\]']],
+    processEscapes: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  TeX: {
+    equationNumbers: { autoNumber: "AMS" },
+    extensions: ["AMSmath.js", "AMSsymbols.js", "noErrors.js", "noUndefined.js"]
+  },
+  "HTML-CSS": { availableFonts: ["TeX"] }
+});
+</script>
 <script type="text/javascript" async
   src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
 </script>
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    tex2jax: {
-      inlineMath: [['$','$'], ['\\(','\\)']],
-      displayMath: [['$$','$$'], ['\\[','\\]']],
-      processEscapes: true,
-      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'] // Skip MathJax processing in these tags
-    },
-    TeX: {
-        equationNumbers: { autoNumber: "AMS" },
-        extensions: ["AMSmath.js", "AMSsymbols.js", "noErrors.js", "noUndefined.js"]
-    }
-  });
+<script>
+// Function to tell MathJax to re-render. Streamlit's full re-render might make this less necessary,
+// but it can be useful if parts of the page are updated via callbacks without a full Python rerun.
+function reprocessMathJax() {
+  if (window.MathJax) {
+    console.log("Queueing MathJax Typeset");
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+  } else {
+    console.log("MathJax not loaded yet for reprocess");
+  }
+}
+// Call it once after initial load (might be redundant with full Streamlit reruns)
+// setTimeout(reprocessMathJax, 2000); // Delay to ensure MathJax is loaded
 </script>
 """
-st.components.v1.html(mathjax_script, height=0)
+# Inject the MathJax configuration and library
+# Only inject it once, not on every re-run if possible, though st.components.v1.html might handle this.
+if 'mathjax_loaded' not in st.session_state:
+    st.components.v1.html(mathjax_script_and_trigger, height=0)
+    st.session_state.mathjax_loaded = True
 
 
-# --- Helper Functions for Plotting ---
+# --- Helper Functions for Plotting (Unchanged) ---
 def plot_beta_distribution(alpha, beta, label_en, label_ar, ax, is_discounted_label=False, discount_factor_val=None):
     base_label = label_ar if current_lang == "ar" else label_en
     formatted_label = ""
@@ -59,27 +79,27 @@ def get_credible_interval(alpha, beta, conf_level=0.95):
     try: return stats.beta.interval(conf_level, alpha, beta)
     except ValueError: return (0.0, 0.0)
 
-# --- Rendering Helpers (Arabic strings can now contain HTML and LaTeX) ---
+# --- Rendering Helpers ---
 def display_header(english_text_with_latex, arabic_text_with_latex_and_html, level=1):
     header_tag = f"h{level}"
     if current_lang == "ar":
-        # Arabic text might contain HTML for bold/italic AND LaTeX for MathJax to process
         st.markdown(f"<{header_tag} dir='rtl' style='text-align: right;'>{arabic_text_with_latex_and_html}</{header_tag}>", unsafe_allow_html=True)
     else:
-        # English text uses Streamlit's native Markdown and KaTeX processing
         st.markdown(f"<{header_tag}>{english_text_with_latex}</{header_tag}>", unsafe_allow_html=True)
 
 
 def display_markdown(english_markdown_with_latex, arabic_text_with_latex_and_html):
+    text_to_render = ""
     if current_lang == "ar":
-        # Pass the Arabic string (which can have HTML and LaTeX) to markdown with unsafe_allow_html=True
-        # MathJax will scan this HTML block.
-        st.markdown(f"<div dir='rtl'>{arabic_text_with_latex_and_html}</div>", unsafe_allow_html=True)
+        text_to_render = f"<div dir='rtl'>{arabic_text_with_latex_and_html}</div>"
+        st.markdown(text_to_render, unsafe_allow_html=True)
     else:
-        # English text uses Streamlit's native Markdown and KaTeX processing
-        st.markdown(english_markdown_with_latex) # unsafe_allow_html=False (default) or True if Eng needs HTML
+        text_to_render = english_markdown_with_latex
+        # For English, let Streamlit's native KaTeX try.
+        # If English also needs complex HTML AND MathJax, then always use unsafe_allow_html=True
+        st.markdown(text_to_render) # unsafe_allow_html=False for Streamlit's KaTeX
 
-# --- Proposal Content Functions (Strings now mix HTML and LaTeX freely) ---
+# --- Proposal Content Functions (Strings mix HTML and LaTeX) ---
 
 def introduction_objectives_content():
     display_header("1. Introduction & Objectives", "١. مقدمة وأهداف", level=2)
@@ -88,12 +108,13 @@ def introduction_objectives_content():
 It is designed to enhance the process of gathering and analyzing survey data for Hajj pilgrim satisfaction.
 Here is **another bolded phrase**. And *italic text*.
 And a formula: $$x^2 + y^2 = z^2$$
+Inline math: $E = mc^2$.
     """
-    # Arabic now uses HTML for formatting and standard LaTeX for MathJax
     ar_intro_html_latex = """يحدد هذا المقترح إطارًا لـ <b>تقدير Bayesian التكيفي</b>.
 إنه مصمم لتعزيز عملية جمع وتحليل بيانات الاستطلاع الخاصة برضا حجاج بيت الله الحرام.
 هذه <b>عبارة أخرى بخط عريض</b>. وهذا <i>نص مائل</i>.
 و معادلة: $$x^2 + y^2 = z^2$$
+رياضيات ضمن النص: $E = mc^2$.
 المعادلة أعلاه مثال.
     """
     display_markdown(en_intro_md, ar_intro_html_latex)
@@ -102,13 +123,13 @@ And a formula: $$x^2 + y^2 = z^2$$
     en_objectives_md = """
 * **Achieve Desired Precision Efficiently:** To obtain metrics with pre-defined precision.
 * **Dynamic Sampling Adjustments:** To iteratively adjust sampling efforts.
-* **Another Objective:** This is a **key goal**.
+* **Another Objective:** This is a **key goal**. Example: $\\sum_{i=1}^n p_i$
     """
     ar_objectives_html_latex = """
 <ul>
     <li><b>تحقيق الدقة المطلوبة بكفاءة:</b> الحصول على مقاييس بدقة محددة مسبقًا.</li>
     <li><b>تعديلات أخذ العينات الديناميكية:</b> تعديل جهود أخذ العينات بشكل متكرر.</li>
-    <li><b>هدف آخر:</b> هذا <b>هدف رئيسي</b>.</li>
+    <li><b>هدف آخر:</b> هذا <b>هدف رئيسي</b>. مثال: $\\sum_{i=1}^n p_i$</li>
 </ul>
     """
     display_markdown(en_objectives_md, ar_objectives_html_latex)
@@ -166,9 +187,7 @@ def interactive_illustration_content():
     en_text = "Interactive Beta-Binomial model. Posterior is $Beta(\\alpha_0+k, \\beta_0+n-k)$."
     ar_text = "توضيح تفاعلي لنموذج Beta-Binomial. التوزيع اللاحق هو $Beta(\\alpha_0+k, \\beta_0+n-k)$."
     display_markdown(en_text, ar_text)
-
-    # ... (rest of interactive illustration logic, can also use display_markdown for its text parts)
-    # For plots, labels do not need complex LaTeX, so previous plot function is fine.
+    # ... (rest of interactive illustration logic)
 
 def conclusion_content():
     display_header("7. Conclusion", "٧. الخلاصة", level=2)
@@ -207,9 +226,9 @@ sidebar_keys = list(PAGES_SETUP.keys())
 
 st.sidebar.title("Proposal Sections" if current_lang == "en" else "أقسام المقترح")
 selected_page_display_name = st.sidebar.radio(
-    f"navigation_radio_{current_lang}_v_mathjax", 
+    f"navigation_radio_{current_lang}_v_mathjax2", 
     sidebar_display_options,
-    key=f"nav_radio_main_{current_lang}_v_mathjax"
+    key=f"nav_radio_main_{current_lang}_v_mathjax2"
 )
 
 selected_page_key = None
@@ -221,6 +240,12 @@ for key_iter in sidebar_keys:
 if selected_page_key:
     page_function_to_call = PAGES_SETUP[selected_page_key]["func"]
     page_function_to_call()
+    # Attempt to trigger MathJax reprocessing after content is drawn
+    # This might be helpful if Streamlit doesn't do a full page reload that MathJax detects.
+    # However, st.rerun() or other Streamlit mechanisms often make this explicit JS call unnecessary.
+    # Forcing a full pass for MathJax
+    # st.components.v1.html("<script>if(window.MathJax){MathJax.Hub.Queue(['Typeset', MathJax.Hub]);}</script>", height=0)
+
 else:
     st.error("Page loading error." if current_lang == "en" else "<div dir='rtl'>خطأ في تحميل الصفحة.</div>")
 
