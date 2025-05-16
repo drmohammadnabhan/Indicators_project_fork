@@ -1,5 +1,14 @@
-# test_dict_syntax.py
+import streamlit as st
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+import pandas as pd
 
+# Page Configuration
+st.set_page_config(layout="wide", page_title="Adaptive Bayesian Estimation Proposal")
+
+# --- Language and Text Definition ---
+# All HTML for RTL is now handled by rendering functions, not in these strings.
 LANGUAGES = {
     "app_title": {"en": "Proposal: Adaptive Bayesian Estimation for Pilgrim Satisfaction Surveys",
                   "ar": "مقترح: تقدير Bayesian التكيفي لاستطلاعات رضا الحجاج"},
@@ -452,4 +461,11 @@ We recommend proceeding with a pilot project to demonstrate the practical benefi
 نوصي بالمضي قدمًا في مشروع تجريبي لإثبات الفوائد العملية وتحسين الجوانب التشغيلية لهذا النهج التحليلي المتقدم."""}
 }
 
-print("LANGUAGES dictionary defined successfully.")
+print("--- ISOLATED DICTIONARY TEST ---")
+print(f"Number of top-level keys in LANGUAGES: {len(LANGUAGES)}")
+if "app_title" in LANGUAGES:
+    print("app_title key exists.")
+    if "en" in LANGUAGES["app_title"] and "ar" in LANGUAGES["app_title"]:
+        print("English and Arabic for app_title exist.")
+print("LANGUAGES dictionary defined successfully (or so it seems if no SyntaxError).")
+print("--- END OF ISOLATED DICTIONARY TEST ---")
