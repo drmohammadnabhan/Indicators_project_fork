@@ -8,55 +8,9 @@ import pandas as pd
 st.set_page_config(page_title="Adaptive Bayesian Estimation Proposal", layout="wide")
 
 # --- Global variable for language ---
-current_lang = "en" # Default
+current_lang = "en"
 
-# --- MathJax Configuration (Revised) ---
-# This script tells MathJax to look for $...$ and \(...\) for inline math,
-# and $$...$$ and \[...\] for display math.
-# It will be injected once at the beginning of the app.
-# Added a function to explicitly queue a MathJax typeset operation.
-mathjax_script_and_trigger = """
-<script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  tex2jax: {
-    inlineMath: [['$','$'], ['\\(','\\)']],
-    displayMath: [['$$','$$'], ['\\[','\\]']],
-    processEscapes: true,
-    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-  },
-  TeX: {
-    equationNumbers: { autoNumber: "AMS" },
-    extensions: ["AMSmath.js", "AMSsymbols.js", "noErrors.js", "noUndefined.js"]
-  },
-  "HTML-CSS": { availableFonts: ["TeX"] }
-});
-</script>
-<script type="text/javascript" async
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
-</script>
-<script>
-// Function to tell MathJax to re-render. Streamlit's full re-render might make this less necessary,
-// but it can be useful if parts of the page are updated via callbacks without a full Python rerun.
-function reprocessMathJax() {
-  if (window.MathJax) {
-    console.log("Queueing MathJax Typeset");
-    MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
-  } else {
-    console.log("MathJax not loaded yet for reprocess");
-  }
-}
-// Call it once after initial load (might be redundant with full Streamlit reruns)
-// setTimeout(reprocessMathJax, 2000); // Delay to ensure MathJax is loaded
-</script>
-"""
-# Inject the MathJax configuration and library
-# Only inject it once, not on every re-run if possible, though st.components.v1.html might handle this.
-if 'mathjax_loaded' not in st.session_state:
-    st.components.v1.html(mathjax_script_and_trigger, height=0)
-    st.session_state.mathjax_loaded = True
-
-
-# --- Helper Functions for Plotting (Unchanged) ---
+# --- Helper Functions for Plotting (Unchanged from previous working version) ---
 def plot_beta_distribution(alpha, beta, label_en, label_ar, ax, is_discounted_label=False, discount_factor_val=None):
     base_label = label_ar if current_lang == "ar" else label_en
     formatted_label = ""
@@ -64,7 +18,6 @@ def plot_beta_distribution(alpha, beta, label_en, label_ar, ax, is_discounted_la
         formatted_label = f"{base_label} (δ={discount_factor_val:.1f}, α={alpha:.2f}, β={beta:.2f})"
     else:
         formatted_label = f"{base_label} (α={alpha:.2f}, β={beta:.2f})"
-
     x_vals = np.linspace(0.001, 0.999, 500)
     y_vals = stats.beta.pdf(x_vals, alpha, beta)
     ax.plot(x_vals, y_vals, label=formatted_label)
@@ -79,123 +32,135 @@ def get_credible_interval(alpha, beta, conf_level=0.95):
     try: return stats.beta.interval(conf_level, alpha, beta)
     except ValueError: return (0.0, 0.0)
 
-# --- Rendering Helpers ---
-def display_header(english_text_with_latex, arabic_text_with_latex_and_html, level=1):
+# --- Rendering Helpers (Adjusted for hybrid approach) ---
+def display_header(english_text, arabic_text, level=1): # arabic_text is simple text for header
+    text_to_display = arabic_text if current_lang == "ar" else english_text
     header_tag = f"h{level}"
     if current_lang == "ar":
-        st.markdown(f"<{header_tag} dir='rtl' style='text-align: right;'>{arabic_text_with_latex_and_html}</{header_tag}>", unsafe_allow_html=True)
+        st.markdown(f"<{header_tag} dir='rtl' style='text-align: right;'>{text_to_display}</{header_tag}>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<{header_tag}>{english_text_with_latex}</{header_tag}>", unsafe_allow_html=True)
+        # English headers can use markdown directly if needed, or just be plain text.
+        # If headers might contain markdown/KaTeX, use st.markdown for English too.
+        st.markdown(f"<{header_tag}>{text_to_display}</{header_tag}>", unsafe_allow_html=True)
 
 
-def display_markdown(english_markdown_with_latex, arabic_text_with_latex_and_html):
-    text_to_render = ""
+# NEW: Helper to render segmented content for the hybrid approach
+def display_segmented_content(english_markdown_text, arabic_segments_list):
     if current_lang == "ar":
-        text_to_render = f"<div dir='rtl'>{arabic_text_with_latex_and_html}</div>"
-        st.markdown(text_to_render, unsafe_allow_html=True)
+        st.markdown("<div dir='rtl' style='text-align: right;'>", unsafe_allow_html=True)
+        for segment in arabic_segments_list:
+            if segment["type"] == "html":
+                st.markdown(segment["content"], unsafe_allow_html=True)
+            elif segment["type"] == "latex":
+                st.latex(segment["content"])
+            elif segment["type"] == "markdown": # For general markdown in Arabic if needed
+                st.markdown(segment["content"]) # Streamlit's KaTeX won't work here reliably
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
-        text_to_render = english_markdown_with_latex
-        # For English, let Streamlit's native KaTeX try.
-        # If English also needs complex HTML AND MathJax, then always use unsafe_allow_html=True
-        st.markdown(text_to_render) # unsafe_allow_html=False for Streamlit's KaTeX
+        st.markdown(english_markdown_text) # English markdown handles its own KaTeX
 
-# --- Proposal Content Functions (Strings mix HTML and LaTeX) ---
+# --- Proposal Content Functions (Example with Bayesian Methodology) ---
 
 def introduction_objectives_content():
     display_header("1. Introduction & Objectives", "١. مقدمة وأهداف", level=2)
-    
     en_intro_md = """This proposal outlines an **Adaptive Bayesian Estimation framework**.
-It is designed to enhance the process of gathering and analyzing survey data for Hajj pilgrim satisfaction.
-Here is **another bolded phrase**. And *italic text*.
-And a formula: $$x^2 + y^2 = z^2$$
-Inline math: $E = mc^2$.
-    """
-    ar_intro_html_latex = """يحدد هذا المقترح إطارًا لـ <b>تقدير Bayesian التكيفي</b>.
-إنه مصمم لتعزيز عملية جمع وتحليل بيانات الاستطلاع الخاصة برضا حجاج بيت الله الحرام.
-هذه <b>عبارة أخرى بخط عريض</b>. وهذا <i>نص مائل</i>.
-و معادلة: $$x^2 + y^2 = z^2$$
-رياضيات ضمن النص: $E = mc^2$.
-المعادلة أعلاه مثال.
-    """
-    display_markdown(en_intro_md, ar_intro_html_latex)
-
-    display_header("1.1. Primary Objectives", "١.١. الأهداف الأساسية", level=3)
-    en_objectives_md = """
-* **Achieve Desired Precision Efficiently:** To obtain metrics with pre-defined precision.
-* **Dynamic Sampling Adjustments:** To iteratively adjust sampling efforts.
-* **Another Objective:** This is a **key goal**. Example: $\\sum_{i=1}^n p_i$
-    """
-    ar_objectives_html_latex = """
-<ul>
-    <li><b>تحقيق الدقة المطلوبة بكفاءة:</b> الحصول على مقاييس بدقة محددة مسبقًا.</li>
-    <li><b>تعديلات أخذ العينات الديناميكية:</b> تعديل جهود أخذ العينات بشكل متكرر.</li>
-    <li><b>هدف آخر:</b> هذا <b>هدف رئيسي</b>. مثال: $\\sum_{i=1}^n p_i$</li>
-</ul>
-    """
-    display_markdown(en_objectives_md, ar_objectives_html_latex)
-
+And a formula: $$x^2 + y^2 = z^2$$"""
+    ar_intro_segments = [
+        {"type": "html", "content": "<p>يحدد هذا المقترح إطارًا لـ <b>تقدير Bayesian التكيفي</b>.</p>"},
+        {"type": "html", "content": "<p>و معادلة:</p>"},
+        {"type": "latex", "content": r"x^2 + y^2 = z^2"}
+    ]
+    display_segmented_content(en_intro_md, ar_intro_segments)
+    # ... (rest of the intro content)
 
 def bayesian_adaptive_methodology_content():
     display_header("3. Core Methodology: Bayesian Adaptive Estimation", "٣. المنهجية الأساسية: تقدير Bayesian التكيفي", level=2)
     
-    en_method_md = r"""
-The core of Bayesian inference involves:
-* **Prior Distribution ($P(\theta)$):** Initial belief.
-* **Likelihood ($P(D|\theta)$):** How data $D$ supports $\theta$.
-* **Posterior Distribution ($P(\theta|D)$):** Updated belief, calculated via Bayes' Theorem:
+    english_methodology_md = r"""
+At its heart, Bayesian inference combines prior knowledge with observed data to arrive at an updated understanding, known as the posterior distribution.
+
+* **Prior Distribution ($P(\theta)$):** This represents our initial belief about a parameter $\theta$ (e.g., the proportion of satisfied pilgrims) *before* observing new data.
+* **Likelihood ($P(D|\theta)$):** This quantifies how probable the observed data ($D$) is, given a particular value of the parameter $\theta$.
+* **Posterior Distribution ($P(\theta|D)$):** This is our updated belief about $\theta$ *after* observing the data. It is calculated using Bayes' Theorem:
     $$ P(\theta|D) = \frac{P(D|\theta) \times P(\theta)}{P(D)} $$
-    Where $P(D)$ is the marginal likelihood. We often use:
+    Where $P(D)$ is the marginal likelihood of the data, acting as a normalizing constant. In practice, we often focus on the proportionality:
     $$ P(\theta|D) \propto P(D|\theta) \times P(\theta) $$
+* **Credible Interval:** In Bayesian statistics, a credible interval is a range of values that contains the parameter $\theta$ with a certain probability (e.g., 95%).
 This posterior is **fundamental** for decision making.
     """
-    ar_method_html_latex = r"""
-<p>في جوهره، يجمع استدلال Bayesian بين المعرفة المسبقة والبيانات المرصودة للوصول إلى فهم محدث، يُعرف بالتوزيع اللاحق.</p>
-<ul>
-    <li><b>التوزيع المسبق ($P(\theta)$):</b> يمثل هذا اعتقادنا الأولي حول معلمة $\theta$.</li>
-    <li><b>دالة الإمكان ($P(D|\theta)$):</b> تحدد هذه الدالة مدى احتمالية البيانات $D$.</li>
-    <li><b>التوزيع اللاحق ($P(\theta|D)$):</b> هذا هو اعتقادنا المحدث. يتم حسابه باستخدام نظرية Bayes:
-        $$ P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)} $$</li>
-    <li>حيث $P(D)$ هو الإمكان الهامشي للبيانات. في الممارسة العملية، غالبًا ما نركز على التناسب:
-        $$ P(\theta|D) \propto P(D|\theta) P(\theta) $$</li>
-    <li><b>فترة الموثوقية:</b> في إحصاءات Bayesian، فترة الموثوقية هي نطاق من القيم يحتوي على المعلمة $\theta$ باحتمال معين.</li>
-</ul>
-<p>هذا التوزيع اللاحق <b>أساسي</b> لاتخاذ القرار.</p>
-    """
-    display_markdown(en_method_md, ar_method_html_latex)
 
-# --- Dummy content for other sections for brevity ---
+    arabic_methodology_segments = [
+        {"type": "html", "content": "<p>في جوهره، يجمع استدلال Bayesian بين المعرفة المسبقة والبيانات المرصودة للوصول إلى فهم محدث، يُعرف بالتوزيع اللاحق.</p>"},
+        {"type": "html", "content": "<ul>"},
+        {"type": "html", "content": "<li><b>التوزيع المسبق ($P(\\theta)$):</b> يمثل هذا اعتقادنا الأولي حول معلمة $\\theta$ (على سبيل المثال، نسبة الحجاج الراضين) <i>قبل</i> ملاحظة البيانات الجديدة. (يمكن استخدام &alpha; للرموز البسيطة).</li>"},
+        {"type": "html", "content": "<li><b>دالة الإمكان ($P(D|\\theta)$):</b> تحدد هذه الدالة مدى احتمالية البيانات المرصودة ($D$)، بالنظر إلى قيمة معينة للمعلومة $\\theta$.</li>"},
+        {"type": "html", "content": "<li><b>التوزيع اللاحق ($P(\\theta|D)$):</b> هذا هو اعتقادنا المحدث حول $\\theta$ <i>بعد</i> ملاحظة البيانات. يتم حسابه باستخدام نظرية Bayes:</li>"},
+        {"type": "latex", "content": r"P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}"},
+        {"type": "html", "content": "<li>حيث $P(D)$ هو الإمكان الهامشي للبيانات، ويعمل كثابت تسوية. في الممارسة العملية، غالبًا ما نركز على التناسب:</li>"},
+        {"type": "latex", "content": r"P(\theta|D) \propto P(D|\theta) P(\theta)"},
+        {"type": "html", "content": "<li><b>فترة الموثوقية:</b> في إحصاءات Bayesian، فترة الموثوقية هي نطاق من القيم يحتوي على المعلمة $\\theta$ باحتمال معين (على سبيل المثال، ٩٥٪).</li>"},
+        {"type": "html", "content": "</ul>"},
+        {"type": "html", "content": "<p>هذا التوزيع اللاحق <b>أساسي</b> لاتخاذ القرار.</p>"}
+    ]
+    
+    display_segmented_content(english_methodology_md, arabic_methodology_segments)
+
+    # --- Example for Modeling Satisfaction (Section 3.3) using the hybrid approach ---
+    display_header("3.3. Modeling Satisfaction (e.g., using Beta-Binomial Model)", 
+                   "٣.٣. نمذجة الرضا (على سبيل المثال، باستخدام نموذج Beta-Binomial)", level=3)
+
+    english_modeling_md = r"""
+For satisfaction metrics that are proportions, the Beta-Binomial model is suitable.
+* Parameter of Interest: $\theta$
+* Prior: $Beta(\alpha_0, \beta_0)$
+* Likelihood: $P(k, n | \theta) = \binom{n}{k} \theta^k (1-\theta)^{n-k}$
+* Posterior: $\theta | k, n \sim Beta(\alpha_0 + k, \beta_0 + n - k)$
+* Point Estimate (Posterior Mean): $$ E[\theta | D] = \frac{\alpha_0 + k}{\alpha_0 + k + \beta_0 + n - k} $$
+    """
+    arabic_modeling_segments = [
+        {"type": "html", "content": "<p>بالنسبة لمقاييس الرضا التي هي عبارة عن نسب، فإن نموذج Beta-Binomial مناسب جدًا.</p>"},
+        {"type": "html", "content": "<ul><li>المعلمة ذات الأهمية: &theta; (ثيتا)</li></ul>"}, # Using HTML entity for simple Greek letter
+        {"type": "html", "content": "<ul><li>التوزيع المسبق: $Beta(\\alpha_0, \\beta_0)$ (يمكن عرض هذا مباشرة إذا كان بسيطًا، أو عبر st.latex إذا كان معقدًا)</li></ul>"},
+        # For complex formulas, use st.latex
+        {"type": "html", "content": "<p>دالة الإمكان:</p>"},
+        {"type": "latex", "content": r"P(k, n | \theta) = \binom{n}{k} \theta^k (1-\theta)^{n-k}"},
+        {"type": "html", "content": "<p>التوزيع اللاحق:</p>"},
+        {"type": "latex", "content": r"\theta | k, n \sim Beta(\alpha_0 + k, \beta_0 + n - k)"},
+        {"type": "html", "content": "<p>التقدير النقطي (المتوسط اللاحق):</p>"},
+        {"type": "latex", "content": r"E[\theta | D] = \frac{\alpha_0 + k}{\alpha_0 + k + \beta_0 + n - k}"}
+    ]
+    display_segmented_content(english_modeling_md, arabic_modeling_segments)
+
+
+# --- Dummy stubs for other content functions ---
 def challenges_addressed_content():
-    display_header("2. Challenges Addressed", "٢. التحديات التي تعالجها هذه المنهجية", level=2)
-    en_text = "Details of **challenges** and math $$\\sum x_i$$"
-    ar_text = "تفاصيل <b>التحديات</b> ورياضيات $$\\sum x_i$$"
-    display_markdown(en_text, ar_text)
+    display_header("2. Challenges Addressed", "٢. التحديات المعالجة", level=2)
+    # ... convert to segmented display ...
 
 def implementation_roadmap_content():
-    display_header("4. Implementation Roadmap (Conceptual)", "٤. خارطة طريق التنفيذ (مفاهيمية)", level=2)
-    en_text = "Roadmap with $N_0 = \\alpha + \\beta$."
-    ar_text = "خارطة الطريق مع $N_0 = \\alpha + \\beta$."
-    display_markdown(en_text, ar_text)
+    display_header("4. Implementation Roadmap", "٤. خارطة طريق التنفيذ", level=2)
+    # ... convert to segmented display ...
 
 def note_to_practitioners_content():
     display_header("5. Note to Practitioners", "٥. ملاحظة للممارسين", level=2)
-    en_text = "Notes involving $p$-values (just kidding, it's Bayesian!) and formula $p(1-p)$."
-    ar_text = "ملاحظات تتضمن $p$-values (أمزح، إنه Bayesian!) وصيغة $p(1-p)$."
-    display_markdown(en_text, ar_text)
+    # ... convert to segmented display ...
 
 def interactive_illustration_content():
-    display_header("6. Interactive Illustration: Beta-Binomial Model", "٦. توضيح تفاعلي: نموذج Beta-Binomial", level=2)
-    en_text = "Interactive Beta-Binomial model. Posterior is $Beta(\\alpha_0+k, \\beta_0+n-k)$."
-    ar_text = "توضيح تفاعلي لنموذج Beta-Binomial. التوزيع اللاحق هو $Beta(\\alpha_0+k, \\beta_0+n-k)$."
-    display_markdown(en_text, ar_text)
-    # ... (rest of interactive illustration logic)
+    display_header("6. Interactive Illustration", "٦. توضيح تفاعلي", level=2)
+    # ... (This section primarily uses Streamlit widgets and plots, less heavy on mixed text/KaTeX)
+    # ... Text within can be handled by display_segmented_content if needed
+    st.markdown("---") # Example placeholder
+    display_segmented_content(
+        "**Prior Beliefs** (English Markdown)",
+        [{"type": "html", "content": "<b>المعتقدات المسبقة</b> (HTML عربي)"}]
+    )
+    # ... rest of interactive elements
 
 def conclusion_content():
     display_header("7. Conclusion", "٧. الخلاصة", level=2)
-    en_text = "Final **conclusion** with perhaps some integral $\\int f(x) dx$."
-    ar_text = "<b>الخلاصة</b> النهائية مع احتمال وجود تكامل $\\int f(x) dx$."
-    display_markdown(en_text, ar_text)
+    # ... convert to segmented display ...
 
-# --- Streamlit App Structure ---
+# --- Streamlit App Structure (Sidebar etc. remains similar) ---
 selected_lang_option = st.sidebar.selectbox(
     label="Select Language / اختر اللغة",
     options=["English", "العربية"],
@@ -213,7 +178,7 @@ else:
 
 PAGES_SETUP = {
     "Intro": {"en": "1. Introduction & Objectives", "ar": "١. مقدمة وأهداف", "func": introduction_objectives_content},
-    "Challenges": {"en": "2. Challenges Addressed", "ar": "٢. التحديات المعالجة", "func": challenges_addressed_content},
+    "Challenges": {"en": "2. Challenges Addressed", "ar": "٢. التحديات التي تعالجها هذه المنهجية", "func": challenges_addressed_content}, # Corrected Arabic key
     "Methodology": {"en": "3. Core Methodology", "ar": "٣. المنهجية الأساسية", "func": bayesian_adaptive_methodology_content},
     "Roadmap": {"en": "4. Implementation Roadmap", "ar": "٤. خارطة طريق التنفيذ", "func": implementation_roadmap_content},
     "Practitioners": {"en": "5. Note to Practitioners", "ar": "٥. ملاحظة للممارسين", "func": note_to_practitioners_content},
@@ -226,9 +191,9 @@ sidebar_keys = list(PAGES_SETUP.keys())
 
 st.sidebar.title("Proposal Sections" if current_lang == "en" else "أقسام المقترح")
 selected_page_display_name = st.sidebar.radio(
-    f"navigation_radio_{current_lang}_v_mathjax2", 
+    f"navigation_radio_{current_lang}_v_hybrid", 
     sidebar_display_options,
-    key=f"nav_radio_main_{current_lang}_v_mathjax2"
+    key=f"nav_radio_main_{current_lang}_v_hybrid"
 )
 
 selected_page_key = None
@@ -240,12 +205,6 @@ for key_iter in sidebar_keys:
 if selected_page_key:
     page_function_to_call = PAGES_SETUP[selected_page_key]["func"]
     page_function_to_call()
-    # Attempt to trigger MathJax reprocessing after content is drawn
-    # This might be helpful if Streamlit doesn't do a full page reload that MathJax detects.
-    # However, st.rerun() or other Streamlit mechanisms often make this explicit JS call unnecessary.
-    # Forcing a full pass for MathJax
-    # st.components.v1.html("<script>if(window.MathJax){MathJax.Hub.Queue(['Typeset', MathJax.Hub]);}</script>", height=0)
-
 else:
     st.error("Page loading error." if current_lang == "en" else "<div dir='rtl'>خطأ في تحميل الصفحة.</div>")
 
