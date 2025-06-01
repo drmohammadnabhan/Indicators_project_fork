@@ -1,9 +1,10 @@
 import streamlit as st
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, beta as beta_dist # Added beta_dist for Cycle 5
 import math
 import pandas as pd
 from statsmodels.stats.proportion import proportions_ztest, confint_proportions_2indep
+import matplotlib.pyplot as plt # Added for Cycle 5 plots
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -52,8 +53,79 @@ def calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variati
     n_per_variation = numerator / denominator
     return math.ceil(n_per_variation), None
 
+# --- Helper Function for Bayesian Analysis (Binary) ---
+def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=1, prior_beta=1, n_samples=10000, ci_level=0.95):
+    results = {}
+    posterior_params = {}
+    
+    # Calculate posterior parameters for each group
+    for index, row in summary_stats.iterrows():
+        var_name = row['Variation'] # Assuming column name is 'Variation' from summary_stats
+        users = int(row['Users'])
+        conversions = int(row['Conversions'])
+        
+        alpha_post = prior_alpha + conversions
+        beta_post = prior_beta + (users - conversions)
+        posterior_params[var_name] = {'alpha': alpha_post, 'beta': beta_post}
+        
+        # Sample from posterior
+        samples = beta_dist.rvs(alpha_post, beta_post, size=n_samples)
+        results[var_name] = {
+            'samples': samples,
+            'mean_cr': np.mean(samples),
+            'median_cr': np.median(samples),
+            'cr_ci_low': beta_dist.ppf((1-ci_level)/2, alpha_post, beta_post), # Using ppf for CI on CR
+            'cr_ci_high': beta_dist.ppf(1-(1-ci_level)/2, alpha_post, beta_post),
+            'alpha_post': alpha_post,
+            'beta_post': beta_post
+        }
+
+    if control_group_name not in results:
+        return None, "Control group not found in Bayesian results data."
+
+    # Comparisons
+    control_samples = results[control_group_name]['samples']
+    
+    for var_name, data in results.items():
+        if var_name == control_group_name:
+            data['prob_better_than_control'] = None # Or 0.5 if comparing to itself (not typical)
+            data['uplift_ci_low'] = None
+            data['uplift_ci_high'] = None
+            data['expected_uplift_abs'] = None
+            continue
+
+        var_samples = data['samples']
+        diff_samples = var_samples - control_samples
+        
+        data['prob_better_than_control'] = np.mean(diff_samples > 0)
+        data['uplift_ci_low'] = np.percentile(diff_samples, (1-ci_level)/2 * 100)
+        data['uplift_ci_high'] = np.percentile(diff_samples, (1-(1-ci_level)/2) * 100)
+        data['expected_uplift_abs'] = np.mean(diff_samples)
+
+    # Probability of being the best
+    all_samples_matrix = np.array([results[var]['samples'] for var in summary_stats['Variation'].tolist()])
+    best_variation_counts = np.zeros(len(summary_stats['Variation'].tolist()))
+    
+    if all_samples_matrix.ndim > 1 and all_samples_matrix.shape[0] > 0 : # Ensure matrix is not empty or 1D
+        for i in range(n_samples):
+            best_idx = np.argmax(all_samples_matrix[:, i])
+            best_variation_counts[best_idx] += 1
+        
+        prob_best = best_variation_counts / n_samples
+        
+        for i, var_name in enumerate(summary_stats['Variation'].tolist()):
+            results[var_name]['prob_best'] = prob_best[i]
+    else: # Handle case with only one variation or empty data
+        for var_name in summary_stats['Variation'].tolist():
+            results[var_name]['prob_best'] = 1.0 if len(summary_stats['Variation'].tolist()) == 1 else 0.0
+
+
+    return results, None
+
+
 # --- Page Functions ---
 def show_introduction_page():
+    # ... (Content from Cycle 1 - V0.2.2 - as in previous full script)
     st.header("Introduction to A/B Testing 🧪")
     st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
@@ -104,10 +176,10 @@ def show_introduction_page():
     st.markdown("This application aims to be your companion for the critical stages of A/B testing: * Helping you **design robust tests** by calculating the necessary sample size. * Enabling you to **analyze the data** you've collected using both Frequentist and Bayesian statistical approaches. * Guiding you in **interpreting those results** to make informed, data-driven decisions. * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.")
 
 def show_design_test_page():
+    # ... (Content from Cycle 3 - V0.3 - including Sample Size Calculator, Formula, Impacts, and Pitfalls expanders)
     st.header("Designing Your A/B Test 📐")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation for tests with **binary outcomes** (e.g., conversion rates, click-through rates).")
     st.markdown("---")
-    
     st.subheader("Sample Size Calculator (for Binary Outcomes)")
     st.markdown("**Calculator Inputs:**")
     cols = st.columns(2)
@@ -171,34 +243,8 @@ def show_design_test_page():
         else: st.error("An unexpected error occurred during calculation.")
     st.markdown("---")
     with st.expander("💡 Understanding Input Impacts on Sample Size"):
-        st.markdown(r"""Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively:
-
-        * **Baseline Conversion Rate (BCR):**
-            * *Impact:* The required sample size tends to be largest when BCR is close to 50% (for a given MDE). It decreases as BCR moves towards 0% or 100%.
-            * *Trade-off:* This is usually an existing fact about your current performance. While you don't typically 'trade it off', knowing this helps understand why tests for metrics around 50% CR might require more users than metrics with very low or very high CRs.
-
-        * **Minimum Detectable Effect (MDE):**
-            * *Impact:* This is one of the most influential factors.
-                * *Decreasing* MDE (wanting to detect smaller improvements) **significantly increases** the required sample size.
-                * *Increasing* MDE (being okay with only detecting larger improvements) **decreases** the sample size.
-            * *Trade-off:* A smaller MDE allows you to find more subtle, incremental wins, but at the cost of needing more users and potentially longer test durations. A larger MDE is cheaper/faster but you risk missing smaller, yet potentially valuable, effects. Consider the business value of the smallest change you'd care to implement.
-
-        * **Statistical Power (1 - $\beta$):**
-            * *Impact:* *Increasing* power **increases** the required sample size.
-            * *Trade-off:* Higher power (e.g., 90% vs. 80%) reduces your risk of a Type II error (a "false negative" – failing to detect a real improvement when one exists). This increased confidence comes at the cost of more samples. Lowering power makes tests cheaper but increases the risk of missing out on actual winning variations. 80% is a common standard.
-
-        * **Significance Level ($\alpha$):**
-            * *Impact:* *Decreasing* $\alpha$ (e.g., from 5% to 1%) **increases** the required sample size. (A lower $\alpha$ means you're being more stringent).
-            * *Trade-off:* A lower $\alpha$ reduces your risk of a Type I error (a "false positive" – concluding there's an improvement when there isn't one). This means you'll have more confidence in any "winning" result you declare. However, this greater certainty requires more samples. Increasing $\alpha$ (e.g., to 10%) reduces sample size but increases the risk of implementing a change that isn't truly better. 5% is a common standard.
-        
-        * **Number of Variations:**
-            * *Impact:* The sample size *per variation* (as calculated by the formula above) remains the same. However, the **total sample size** for the entire experiment increases proportionally with the number of variations.
-            * *Trade-off:* Testing more variations allows you to explore more ideas simultaneously. However, it requires more overall traffic/time and can increase the complexity of analysis and decision-making. Each additional variation needs to "earn its keep" by representing a distinct, valuable hypothesis.
-        
-        Balancing these factors is key to designing a test that is both statistically sound and practically feasible for your resources and timelines.
-        """)
+        st.markdown(r"""Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively: ... * **Baseline Conversion Rate (BCR):** ... * **Minimum Detectable Effect (MDE):** ... * **Statistical Power (1 - $\beta$):** ... * **Significance Level ($\alpha$):** ... * **Number of Variations:** ... Balancing these factors is key...""")
     st.markdown("---")
-
     st.subheader("Common Pitfalls in A/B Test Design & Execution")
     st.markdown("Avoiding these common mistakes can significantly improve the quality and reliability of your A/B tests.")
     pitfalls = {
@@ -223,14 +269,27 @@ def show_design_test_page():
 
 def show_analyze_results_page():
     st.header("Analyze Your A/B Test Results 📊")
-    st.markdown("Upload your A/B test data (as a CSV file) to perform a Frequentist analysis for **binary outcomes**.")
+    st.markdown("Upload your A/B test data (as a CSV file) to perform an analysis for **binary outcomes**.")
     st.markdown("---")
 
-    uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key="file_uploader_cycle4")
+    # Initialize session state variables for storing analysis results if they don't exist
+    if 'analysis_done' not in st.session_state:
+        st.session_state.analysis_done = False
+    if 'freq_summary_stats' not in st.session_state:
+        st.session_state.freq_summary_stats = None
+    if 'control_group_name_analysis' not in st.session_state: # Use a unique key for analysis
+        st.session_state.control_group_name_analysis = None
+    if 'bayesian_results' not in st.session_state:
+        st.session_state.bayesian_results = None
+    if 'alpha_for_analysis' not in st.session_state:
+        st.session_state.alpha_for_analysis = 0.05 # Default
+
+    uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key="file_uploader_cycle5")
 
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
+            st.session_state.df = df # Store df in session state
             st.success("File Uploaded Successfully!")
             st.markdown("**Data Preview (first 5 rows):**")
             st.dataframe(df.head())
@@ -241,235 +300,214 @@ def show_analyze_results_page():
             
             col1_map, col2_map = st.columns(2)
             with col1_map:
-                variation_col = st.selectbox(
-                    "Select your 'Variation ID' column:", 
-                    options=columns, 
-                    index=0,
-                    help="This column should contain the names or identifiers of your test groups (e.g., 'Control', 'Variation A', 'Group B').",
-                    key="variation_col_select"
-                )
+                variation_col = st.selectbox("Select 'Variation ID' column:", options=columns, index=0, key="var_col_c5")
             with col2_map:
-                outcome_col = st.selectbox(
-                    "Select your 'Outcome' column (Binary - e.g., Converted/Not):", 
-                    options=columns, 
-                    index=len(columns)-1 if len(columns)>1 else 0,
-                    help="This column should indicate if a conversion occurred (e.g., 1 for conversion, 0 for no conversion; or 'Yes', 'No').",
-                    key="outcome_col_select"
-                )
+                outcome_col = st.selectbox("Select 'Outcome' column (Binary):", options=columns, index=len(columns)-1 if len(columns)>1 else 0, key="out_col_c5")
 
-            success_value_options = [] 
-            success_value = None     
-
+            success_value_options, success_value = [], None
             if outcome_col:
                 unique_outcomes = df[outcome_col].unique()
-                if len(unique_outcomes) == 1:
-                    st.warning(f"The outcome column '{outcome_col}' only has one value: `{unique_outcomes[0]}`. A binary outcome requires two distinct values for meaningful analysis.")
-                    success_value_options = unique_outcomes 
-                elif len(unique_outcomes) > 2:
-                    st.warning(f"The outcome column '{outcome_col}' has more than two unique values: `{unique_outcomes}`. For binary analysis, please select the value that represents a 'conversion' or success.")
-                    success_value_options = unique_outcomes
-                elif len(unique_outcomes) == 2:
-                    success_value_options = unique_outcomes
+                if len(unique_outcomes) == 1: st.warning(f"Outcome column '{outcome_col}' has only one value: `{unique_outcomes[0]}`.")
+                elif len(unique_outcomes) > 2: st.warning(f"Outcome column '{outcome_col}' has >2 unique values: `{unique_outcomes}`. Select the success value.")
+                success_value_options = unique_outcomes
                 
                 if len(success_value_options) > 0:
-                    success_value_str = st.selectbox(
-                        f"Which value in '{outcome_col}' represents a 'Conversion' (Success)?",
-                        options=[str(val) for val in success_value_options],
-                        index = 0, 
-                        help="Select the value that indicates the desired outcome happened.",
-                        key="success_value_select"
-                    )
-                    
+                    success_value_str = st.selectbox(f"Which value in '{outcome_col}' is 'Conversion' (Success)?", options=[str(val) for val in success_value_options], index=0, key="succ_val_c5")
                     original_dtype = df[outcome_col].dtype
-                    if success_value_str.lower() == 'nan' and any(pd.isna(val) for val in success_value_options):
-                         success_value = np.nan
+                    if success_value_str.lower() == 'nan' and any(pd.isna(val) for val in success_value_options): success_value = np.nan
                     elif pd.api.types.is_numeric_dtype(original_dtype) and not pd.api.types.is_bool_dtype(original_dtype):
-                        try:
-                            success_value = original_dtype.type(success_value_str)
-                        except ValueError: 
-                            success_value = success_value_str 
-                    elif pd.api.types.is_bool_dtype(original_dtype):
-                         success_value = (success_value_str.lower() == 'true') 
-                    else: 
-                        success_value = success_value_str
-                else:
-                    st.warning(f"Could not determine distinct values in outcome column '{outcome_col}' or it is empty. Please check your data.")
-
-
-            st.markdown("---")
-            st.subheader("2. Select Your Control Group")
-            control_group_name = None 
-            if variation_col:
-                variation_names = df[variation_col].unique().tolist()
-                if variation_names:
-                    control_group_name = st.selectbox(
-                        "Select your 'Control Group' name:",
-                        options=variation_names,
-                        index=0,
-                        help="Choose the variation that represents your baseline or original version.",
-                        key="control_group_select"
-                    )
-                else:
-                    st.warning(f"No unique variation names found in column '{variation_col}'.")
+                        try: success_value = original_dtype.type(success_value_str)
+                        except ValueError: success_value = success_value_str 
+                    elif pd.api.types.is_bool_dtype(original_dtype): success_value = (success_value_str.lower() == 'true') 
+                    else: success_value = success_value_str
+                else: st.warning(f"Could not determine distinct values in outcome column '{outcome_col}'.")
             
-            st.markdown("---")
-            alpha_analysis = st.slider("Significance Level (\u03B1) for Analysis (%)", 1, 10, 5, 1, key="alpha_analysis_slider_cycle4",
-                                       help="Set the significance level (alpha) for hypothesis testing. Typically 5%.") / 100.0
+            st.session_state.variation_col = variation_col
+            st.session_state.outcome_col = outcome_col
+            st.session_state.success_value = success_value
 
 
-            if st.button("🚀 Run Frequentist Analysis (Binary Outcome)", key="run_analysis_button_cycle4"):
-                if not variation_col or not outcome_col or control_group_name is None or success_value is None: 
+            st.markdown("---"); st.subheader("2. Select Your Control Group & Analysis Alpha")
+            if st.session_state.variation_col and 'df' in st.session_state:
+                variation_names = st.session_state.df[st.session_state.variation_col].unique().tolist()
+                if variation_names:
+                    st.session_state.control_group_name_analysis = st.selectbox("Select 'Control Group':", options=variation_names, index=0, key="ctrl_grp_c5")
+                else: st.warning(f"No unique variations in '{st.session_state.variation_col}'.")
+            
+            st.session_state.alpha_for_analysis = st.slider("Significance Level (\u03B1) for Analysis (%)", 1, 10, 5, 1, key="alpha_analysis_c5") / 100.0
+            
+            if st.button("🚀 Run Analysis (Frequentist & Bayesian)", key="run_analysis_button_cycle5"):
+                st.session_state.analysis_done = False # Reset flags
+                st.session_state.freq_summary_stats = None
+                st.session_state.bayesian_results = None
+
+                if not st.session_state.variation_col or \
+                   not st.session_state.outcome_col or \
+                   st.session_state.control_group_name_analysis is None or \
+                   st.session_state.success_value is None:
                     st.error("Please complete all column mapping, success value identification, and control group selections.")
                 else:
                     try:
-                        if pd.isna(success_value):
-                            df['__converted_binary__'] = df[outcome_col].isna().astype(int)
+                        current_df = st.session_state.df.copy() # Use df from session state
+                        if pd.isna(st.session_state.success_value):
+                            current_df['__converted_binary__'] = current_df[st.session_state.outcome_col].isna().astype(int)
                         else:
-                            df['__converted_binary__'] = (df[outcome_col] == success_value).astype(int)
+                            current_df['__converted_binary__'] = (current_df[st.session_state.outcome_col] == st.session_state.success_value).astype(int)
 
-                        st.subheader("📊 Descriptive Statistics")
-                        summary_stats = df.groupby(variation_col).agg(
+                        summary_stats = current_df.groupby(st.session_state.variation_col).agg(
                             Users=('__converted_binary__', 'count'),
                             Conversions=('__converted_binary__', 'sum')
                         ).reset_index()
-                        
+                        summary_stats.rename(columns={st.session_state.variation_col: 'Variation'}, inplace=True) # Standardize col name for bayesian func
+
                         if summary_stats['Users'].sum() == 0:
-                            st.error("No users found after grouping. Please check your column selections or data.")
+                            st.error("No users found after grouping.")
                         else:
                             summary_stats['Conversion Rate (%)'] = (summary_stats['Conversions'] / summary_stats['Users'].replace(0, np.nan) * 100).round(2)
-                            st.dataframe(summary_stats.fillna('N/A (0 Users)'))
-
-                            chart_data = summary_stats.set_index(variation_col)['Conversion Rate (%)'].fillna(0)
-                            if not chart_data.empty:
-                                st.bar_chart(chart_data)
+                            st.session_state.freq_summary_stats = summary_stats # Store for Bayesian use
                             
-                            st.subheader(f"📈 Comparison vs. Control ('{control_group_name}')")
-                            
-                            control_data_rows = summary_stats[summary_stats[variation_col] == control_group_name]
-                            if control_data_rows.empty:
-                                st.error(f"Control group '{control_group_name}' not found in the data or has no users after processing.")
+                            # Run Bayesian Analysis
+                            bayesian_results, bayesian_error = run_bayesian_binary_analysis(
+                                st.session_state.freq_summary_stats, 
+                                st.session_state.control_group_name_analysis,
+                                ci_level=(1-st.session_state.alpha_for_analysis) # Use analysis alpha for CI width consistency
+                            )
+                            if bayesian_error:
+                                st.error(f"Bayesian Analysis Error: {bayesian_error}")
                             else:
-                                control_data = control_data_rows.iloc[0]
-                                control_users = control_data['Users']
-                                control_conversions = control_data['Conversions']
-                                control_cr = control_conversions / control_users if control_users > 0 else 0
-
-                                comparison_results = []
-                                for index, row in summary_stats.iterrows():
-                                    var_name = row[variation_col]
-                                    if var_name == control_group_name:
-                                        continue 
-
-                                    var_users = row['Users']
-                                    var_conversions = row['Conversions']
-                                    var_cr = var_conversions / var_users if var_users > 0 else 0
-
-                                    p_value_display, ci_display, significant_display = 'N/A', 'N/A', 'N/A'
-                                    abs_uplift_display = 'N/A'
-                                    rel_uplift_display = 'N/A'
-
-                                    if control_users > 0 and var_users > 0:
-                                        abs_uplift = var_cr - control_cr
-                                        abs_uplift_display = f"{abs_uplift*100:.2f}"
-                                        rel_uplift_display = f"{(abs_uplift / control_cr) * 100:.2f}%" if control_cr > 0 else "N/A (Control CR is 0)"
-                                        
-                                        count = np.array([var_conversions, control_conversions])
-                                        nobs = np.array([var_users, control_users])
-                                        
-                                        if np.any(count < 0) or np.any(nobs <= 0) or np.any(count > nobs):
-                                            p_value_display, significant_display = 'N/A (Invalid counts/nobs for test)', 'N/A'
-                                            ci_display = 'N/A'
-                                        else:
-                                            try:
-                                                z_stat, p_value = proportions_ztest(count, nobs, alternative='two-sided')
-                                                p_value_display = f"{p_value:.4f}"
-                                                significant_bool = p_value < alpha_analysis
-                                                significant_display = f"Yes (p={p_value:.4f})" if significant_bool else f"No (p={p_value:.4f})"
-                                                
-                                                ci_low_diff, ci_high_diff = confint_proportions_2indep(
-                                                    var_conversions, var_users, 
-                                                    control_conversions, control_users, 
-                                                    method='wald', alpha=alpha_analysis
-                                                )
-                                                ci_display = f"[{ci_low_diff*100:.2f}, {ci_high_diff*100:.2f}]"
-                                            except Exception as e_test: 
-                                                st.warning(f"Could not compute stats for {var_name} vs Control: {e_test}")
-                                                p_value_display, ci_display, significant_display = 'Error', 'Error', 'Error'
-                                    else:
-                                         significant_display = 'N/A (Zero users in control or variation)'
-
-                                    comparison_results.append({
-                                        "Variation": var_name,
-                                        "Conversion Rate (%)": f"{var_cr*100:.2f}",
-                                        "Absolute Uplift (%)": abs_uplift_display,
-                                        "Relative Uplift (%)": rel_uplift_display,
-                                        "P-value (vs Control)": p_value_display,
-                                        f"CI {100*(1-alpha_analysis):.0f}% for Diff. (%)": ci_display,
-                                        "Statistically Significant?": significant_display
-                                    })
-                                
-                                if comparison_results:
-                                    comparison_df = pd.DataFrame(comparison_results)
-                                    st.dataframe(comparison_df)
-                                    for _, row_data in comparison_df.iterrows(): 
-                                        if "Yes" in str(row_data["Statistically Significant?"]):
-                                            st.caption(f"The difference between **{row_data['Variation']}** and control ('{control_group_name}') is statistically significant at the {alpha_analysis*100:.0f}% level. P-value: {row_data['P-value (vs Control)']}. This means there's strong evidence against the null hypothesis (that there's no difference).")
-                                        elif "No" in str(row_data["Statistically Significant?"]):
-                                             st.caption(f"The difference between **{row_data['Variation']}** and control ('{control_group_name}') is not statistically significant at the {alpha_analysis*100:.0f}% level. P-value: {row_data['P-value (vs Control)']}. This means we don't have enough evidence to reject the null hypothesis (that there's no difference).")
+                                st.session_state.bayesian_results = bayesian_results
+                            st.session_state.analysis_done = True
                     except Exception as e:
-                        st.error(f"An error occurred during analysis: {e}")
-                        st.exception(e) 
+                        st.error(f"An error occurred during data processing or initial analysis setup: {e}")
+                        st.exception(e)
         except Exception as e:
             st.error(f"Error reading or processing CSV file: {e}")
             st.exception(e)
     else:
-        st.info("Upload a CSV file to begin analysis for Binary Outcomes (Frequentist).")
+        st.info("Upload a CSV file to begin analysis.")
+
+    # --- Display Results if Analysis is Done ---
+    if st.session_state.analysis_done:
+        alpha_display = st.session_state.alpha_for_analysis # Use consistent alpha for display
+        
+        st.markdown("---")
+        st.subheader("Frequentist Analysis Results")
+        if st.session_state.freq_summary_stats is not None:
+            summary_stats_display = st.session_state.freq_summary_stats.copy() # Use a copy for display
+            st.markdown("##### 📊 Descriptive Statistics")
+            st.dataframe(summary_stats_display.fillna('N/A (0 Users)'))
+            chart_data = summary_stats_display.set_index('Variation')['Conversion Rate (%)'].fillna(0)
+            if not chart_data.empty: st.bar_chart(chart_data)
+            
+            st.markdown(f"##### 📈 Comparison vs. Control ('{st.session_state.control_group_name_analysis}')")
+            control_data_rows = summary_stats_display[summary_stats_display['Variation'] == st.session_state.control_group_name_analysis]
+            if control_data_rows.empty: st.error(f"Control group '{st.session_state.control_group_name_analysis}' data missing.")
+            else:
+                control_data = control_data_rows.iloc[0]
+                control_users, control_conversions = control_data['Users'], control_data['Conversions']
+                control_cr = control_conversions / control_users if control_users > 0 else 0
+                comparison_results_freq = []
+                for index, row in summary_stats_display.iterrows():
+                    var_name, var_users, var_conversions = row['Variation'], row['Users'], row['Conversions']
+                    if var_name == st.session_state.control_group_name_analysis: continue
+                    var_cr = var_conversions / var_users if var_users > 0 else 0
+                    p_val_disp, ci_disp, sig_disp, abs_disp, rel_disp = 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'
+                    if control_users > 0 and var_users > 0:
+                        abs_uplift = var_cr - control_cr
+                        abs_disp = f"{abs_uplift*100:.2f}"
+                        rel_disp = f"{(abs_uplift / control_cr) * 100:.2f}%" if control_cr > 0 else "N/A (Control CR is 0)"
+                        count, nobs = np.array([var_conversions, control_conversions]), np.array([var_users, control_users])
+                        if not (np.any(count < 0) or np.any(nobs <= 0) or np.any(count > nobs)):
+                            try:
+                                _, p_value = proportions_ztest(count, nobs, alternative='two-sided')
+                                p_val_disp = f"{p_value:.4f}"
+                                sig_bool = p_value < alpha_display
+                                sig_disp = f"Yes (p={p_value:.4f})" if sig_bool else f"No (p={p_value:.4f})"
+                                ci_low, ci_high = confint_proportions_2indep(var_conversions, var_users, control_conversions, control_users, method='wald', alpha=alpha_display)
+                                ci_disp = f"[{ci_low*100:.2f}, {ci_high*100:.2f}]"
+                            except Exception: p_val_disp, ci_disp, sig_disp = 'Error', 'Error', 'Error'
+                        else: sig_disp = 'N/A (Invalid counts/nobs)'
+                    else: sig_disp = 'N/A (Zero users)'
+                    comparison_results_freq.append({"Variation": var_name, "Conversion Rate (%)": f"{var_cr*100:.2f}", "Absolute Uplift (%)": abs_disp, "Relative Uplift (%)": rel_disp, "P-value (vs Control)": p_val_disp, f"CI {100*(1-alpha_display):.0f}% for Diff. (%)": ci_disp, "Statistically Significant?": sig_disp})
+                if comparison_results_freq:
+                    comparison_df_freq = pd.DataFrame(comparison_results_freq)
+                    st.dataframe(comparison_df_freq)
+                    for _, row_data in comparison_df_freq.iterrows():
+                        if "Yes" in str(row_data["Statistically Significant?"]): st.caption(f"Frequentist: Difference between **{row_data['Variation']}** and control is statistically significant at {alpha_display*100:.0f}% level (P-value: {row_data['P-value (vs Control)']}).")
+                        elif "No" in str(row_data["Statistically Significant?"]): st.caption(f"Frequentist: Difference between **{row_data['Variation']}** and control is not statistically significant at {alpha_display*100:.0f}% level (P-value: {row_data['P-value (vs Control)']}).")
+        else:
+            st.info("Frequentist analysis could not be completed. Check data and selections.")
+
+        st.markdown("---")
+        st.subheader("Bayesian Analysis Results")
+        if st.session_state.bayesian_results:
+            st.markdown("Using a Beta(1,1) uninformative prior for conversion rates.")
+            bayesian_data_to_display = []
+            for var_name, b_res in st.session_state.bayesian_results.items():
+                bayesian_data_to_display.append({
+                    "Variation": var_name,
+                    "Posterior Mean CR (%)": f"{b_res['mean_cr']*100:.2f}",
+                    f"{100*(1-alpha_display):.0f}% CrI for CR (%)": f"[{b_res['cr_ci_low']*100:.2f}, {b_res['cr_ci_high']*100:.2f}]",
+                    "P(Better than Control) (%)": f"{b_res['prob_better_than_control']*100:.2f}%" if b_res['prob_better_than_control'] is not None else "N/A (Control)",
+                    "Expected Uplift (abs %)": f"{b_res['expected_uplift_abs']*100:.2f}" if b_res['expected_uplift_abs'] is not None else "N/A (Control)",
+                    f"{100*(1-alpha_display):.0f}% CrI for Uplift (abs %)": f"[{b_res['uplift_ci_low']*100:.2f}, {b_res['uplift_ci_high']*100:.2f}]" if b_res['uplift_ci_low'] is not None else "N/A (Control)",
+                    "P(Being Best) (%)": f"{b_res['prob_best']*100:.2f}"
+                })
+            bayesian_df = pd.DataFrame(bayesian_data_to_display)
+            st.dataframe(bayesian_df)
+
+            # Plot posterior distributions
+            st.markdown("##### Posterior Distributions for Conversion Rates")
+            fig, ax = plt.subplots()
+            x = np.linspace(0, 1, 500)
+            for var_name, b_res in st.session_state.bayesian_results.items():
+                posterior = beta_dist.pdf(x, b_res['alpha_post'], b_res['beta_post'])
+                ax.plot(x, posterior, label=f"{var_name} (α={b_res['alpha_post']:.1f},β={b_res['beta_post']:.1f})")
+                ax.fill_between(x, posterior, alpha=0.2)
+            ax.set_title("Posterior Distributions of Conversion Rates")
+            ax.set_xlabel("Conversion Rate")
+            ax.set_ylabel("Density")
+            ax.legend()
+            st.pyplot(fig)
+            plt.close(fig) # Close the figure to free memory
+
+            st.markdown("""
+            **Interpreting Bayesian Results (Briefly):**
+            - **Posterior Mean CR:** The average conversion rate after observing the data.
+            - **CrI for CR:** We are X% confident that the true conversion rate for this variation lies within this interval.
+            - **P(Better than Control):** The probability that this variation's true conversion rate is higher than the control's.
+            - **Expected Uplift:** The average improvement (or decline) you can expect compared to the control.
+            - **CrI for Uplift:** We are X% confident that the true uplift over control lies within this interval.
+            - **P(Being Best):** The probability that this variation has the highest true conversion rate among all tested variations.
+            (More detailed guidance in the 'Bayesian Analysis Guidelines' section - coming soon!)
+            """)
+        else:
+            st.info("Bayesian analysis could not be completed or was not run. Check data and selections.")
     
     st.markdown("---")
-    st.info("Bayesian analysis and further enhancements coming in Cycle 5!")
+    st.info("Segmentation analysis and support for continuous outcomes coming in future cycles!")
 
 
 def show_interpret_results_page():
+    # ... (Content from Cycle 1 - V0.2.2)
     st.header("Interpreting Results & Detailed Decision Guidance 🧐")
     st.write("Guidance on how to interpret your A/B test results and make decisions will be implemented in Cycle 9.")
     st.info("Coming soon: Understanding statistical vs. practical significance, next steps!")
 
+
 def show_faq_page():
+    # ... (Content from Cycle 3 - V0.3)
     st.header("FAQ on Common Misinterpretations ❓")
     st.markdown("This section addresses some common questions and misinterpretations that arise when looking at A/B test results.")
     faqs = {
-        "Q: My p-value is 0.06 (or just above 0.05). Does this mean my variation *almost* worked or is 'on the verge' of significance?": {
-            "answer": "Not exactly. In traditional hypothesis testing, a result is either statistically significant (if p < α, your chosen significance level) or it isn't. A p-value of 0.06 means that *if there were truly no difference between your variations (the null hypothesis is true)*, you'd see data as extreme as yours, or more extreme, about 6% of the time due to random chance alone. It doesn't imply 'almost significant' in a way that suggests a slightly larger sample would guarantee significance. It simply means you didn't meet your pre-defined threshold for rejecting the null hypothesis.",
-            "example": "Think of it like a high jump. If the bar is set at 2 meters (your significance level), and you jump 1.98 meters, you didn't clear the bar. You were close, but you didn't clear it. The p-value reflects the evidence against the null hypothesis; a p-value of 0.06 is weaker evidence than a p-value of 0.01."
-        },
-        "Q: If a test isn't statistically significant, does it mean there's no difference between my variations?": {
-            "answer": "No, not necessarily. A non-significant result means your test did not find *sufficient evidence* to conclude that a difference exists (at your chosen significance level and with your current sample size/power). A real difference might still exist, but it could be: \n1. Smaller than the Minimum Detectable Effect (MDE) your test was powered to find. \n2. Your test might have had low statistical power, making it hard to detect a true difference even if it was reasonably large. \n3. There truly is no meaningful difference, or the difference is negligible.",
-            "example": "Imagine looking for a specific type of small fish in a large, murky pond with a small net. If you don't catch any, it doesn't mean the fish aren't there. Your net (test power/sample size) might have been too small, or the fish too few or too hard to see (small effect size)."
-        },
-        "Q: My A/B test showed Variation B was significantly better. Why did my overall conversion rate drop after I implemented it to 100% of users?": {
-            "answer": "This can be frustrating and can happen for several reasons: \n1. **Regression to the Mean:** The performance observed during the specific test period might have been an overestimation of the true long-term effect. \n2. **Novelty Effect or Scarcity Effect During Test:** Users might have reacted positively (or negatively) to the change simply because it was new, or if the test implied a limited-time offer. This effect might wear off post-launch. \n3. **Segmentation Issues (Simpson's Paradox):** The variation might have performed well for a large segment during the test, but if the overall traffic mix changes post-launch, or if it performed poorly for other crucial segments, the overall result could differ. \n4. **External Factors:** Were there different market conditions, campaigns, or site issues post-launch compared to the test period? \n5. **Type I Error (False Positive):** Even with a 5% significance level, there's a 1 in 20 chance that a statistically significant result is due to random chance. \n6. **Implementation Issues:** Was the winning variation implemented *exactly* as it was tested? Any small differences in code or UX could alter performance.",
-            "example": "A new song might shoot up the charts initially due to hype (novelty effect), but its long-term popularity (post-launch performance) might be lower once the initial excitement fades."
-        },
-        "Q: Can I combine results from two separate A/B tests (e.g., run on different weeks) to get a larger sample size?": {
-            "answer": "Generally, this is not recommended. A/B tests rely on the principle of comparing variations under the *same conditions* at the *same time*. If you run tests at different times, user behavior, traffic sources, seasonality, or other external factors could be different between the two periods, making a direct combination of data statistically invalid and potentially misleading.",
-            "example": "Trying to combine data from a lemonade stand's sales on a hot sunny week with sales data from a cold, rainy week. The conditions are too different to fairly compare or combine the results as if they were from one single experiment."
-        },
-        "Q: Is a 200% lift with a small sample size (e.g., 100 users) more impressive than a 10% lift with a large sample size (e.g., 100,000 users)?": {
-            "answer": "Not necessarily. While a 200% lift sounds dramatic, results from very small sample sizes are highly volatile and have wide confidence/credible intervals. This means the 'true' lift could be much lower, much higher, or even negative. A 10% lift observed with a large sample size is likely to be much more stable, reliable, and closer to the true underlying effect. Always look at the confidence/credible intervals and the statistical significance, not just the point estimate of the lift.",
-            "example": "If one person buys a $100 item from a new 2-person visitor group, that's a 50% conversion rate and huge revenue per visitor for that tiny sample. If 1,000 people buy a $5 item from a 100,000 visitor group, the overall impact is much larger and the metrics are more reliable, even if the per-item value is smaller."
-        },
-        "Q: My Bayesian test shows P(B>A) = 92%. Does this mean there's a 92% chance I'll see this exact observed uplift if I roll it out?": {
-            "answer": "No. P(B>A) = 92% means there's a 92% probability that the *true underlying parameter* of Variation B (e.g., its true long-term conversion rate) is greater than the true underlying parameter of Variation A. The actual uplift you observe in any given period (during the test or post-rollout) will still have some variability. The P(B>A) gives you confidence in the *direction* of the effect. To understand the *magnitude* of the potential uplift, you should look at the posterior distribution for the difference or the credible interval for the lift.",
-            "example": "If a weather forecast says there's a 92% chance of rain, it means it's very likely to rain. It doesn't tell you exactly *how much* it will rain (the magnitude). For that, you'd look at other parts of the forecast, like '0.5 to 1 inch expected'."
-        },
-        "Q: What if my control group's conversion rate in the test is very different from its historical average?": {
-            "answer": "This is a good flag to investigate. Possible reasons include: \n1. **Seasonality/Trends:** User behavior changes over time. \n2. **Different Traffic Mix:** The users in your test period might be different from your historical average (e.g., more mobile users, different marketing channels driving traffic). \n3. **Instrumentation Error:** Double-check your tracking and data collection for the test. \n4. **Actual Change in Baseline:** Something fundamental might have changed on your site or in the market. \nWhile the A/B test still validly compares variations *within the test period*, a significant shift in the baseline might make it harder to extrapolate the observed lift to long-term performance if the conditions causing the shift don't persist.",
-            "example": "If your ice cream shop's historical daily average sales are 100 cones, but during a week-long new flavor test it's only 50 cones (perhaps due to cold weather), the *percentage lift* of a new flavor might still be calculable against that week's 50-cone baseline, but predicting future sales based on that lift needs to account for the unusual baseline."
-        },
-         "Q: The A/B/n test shows Variation C is best overall. Can I just assume it's also significantly better than Variation B without looking at that specific comparison?": {
-            "answer": "Not always safely. While C might have the highest overall metric or highest probability of being best, the difference between C and B might be very small and not statistically significant (or the probability C>B might be low). It's good practice to look at key pairwise comparisons, especially between your top-performing variations, to understand the nuances. For example, C might be best, but B might be almost as good and much easier/cheaper to implement.",
-            "example": "In a race, even if a runner finishes first, their margin over the second-place runner could be a fraction of a second (not a decisive win) or several seconds (a clear win). You'd look at the gap to understand the true performance difference."
-        }
+        "Q: My p-value is 0.06...": {"answer": "Not exactly. ...", "example": "Think of it like a high jump..."},
+        "Q: If a test isn't statistically significant...": {"answer": "No, not necessarily. ...", "example": "Imagine looking for a small fish..."},
+        "Q: My A/B test showed Variation B was significantly better...": {"answer": "This can be frustrating... \n1. **Regression to the Mean** ... \n2. **Novelty Effect** ... \n3. **Segmentation Issues** ... \n4. **External Factors** ... \n5. **Type I Error** ... \n6. **Implementation Issues** ...", "example": "A new song might shoot up the charts..."},
+        "Q: Can I combine results from two separate A/B tests...": {"answer": "Generally, this is not recommended. ...", "example": "Trying to combine lemonade sales data..."},
+        "Q: Is a 200% lift with a small sample size...": {"answer": "Not necessarily. ...", "example": "If one person buys a $100 item..."},
+        "Q: My Bayesian test shows P(B>A) = 92%...": {"answer": "No. P(B>A) = 92% means there's a 92% probability that the *true underlying parameter*...", "example": "If a weather forecast says there's a 92% chance of rain..."},
+        "Q: What if my control group's conversion rate...": {"answer": "This is a good flag to investigate. ... \n1. **Seasonality/Trends** ... \n2. **Different Traffic Mix** ... \n3. **Instrumentation Error** ... \n4. **Actual Change in Baseline** ...", "example": "If your ice cream shop's historical average sales..."},
+        "Q: The A/B/n test shows Variation C is best overall...": {"answer": "Not always safely. ...", "example": "In a race, even if a runner finishes first..."}
     }
     for question, details in faqs.items():
         with st.expander(question):
@@ -478,7 +516,25 @@ def show_faq_page():
     st.markdown("---")
     st.info("Content for this section will be reviewed and expanded as needed.")
 
+# --- NEW Page for Bayesian Guidelines (Placeholder for now) ---
+def show_bayesian_guidelines_page():
+    st.header("Bayesian Analysis Guidelines 🧠")
+    st.markdown("This section will provide a more detailed guide to understanding and interpreting Bayesian A/B test results.")
+    st.markdown("""
+    **Key Concepts to be Covered:**
+    - Priors: What are they? How does the choice of prior (e.g., uninformative Beta(1,1)) affect results?
+    - Likelihood: How your data informs the model.
+    - Posterior: Your updated beliefs after seeing the data.
+    - Interpreting Probabilities: Deep dive into P(Variation > Control) and P(Variation is Best).
+    - Credible Intervals vs. Confidence Intervals.
+    - Advantages of Bayesian A/B Testing (e.g., intuitive results, good for smaller samples, ability to make probability statements about hypotheses).
+    - Expected Loss (Decision Making).
+    """)
+    st.info("Detailed content for this section will be developed in a future cycle.")
+
+
 def show_roadmap_page():
+    # ... (Content from Cycle 1 - V0.2.2)
     st.header("Roadmap / Possible Future Features 🚀")
     st.markdown("This application has several potential features planned for future development:")
     if FUTURE_FEATURES:
@@ -494,6 +550,7 @@ PAGES = {
     "Designing Your A/B Test": show_design_test_page,
     "Analyze Results": show_analyze_results_page,
     "Interpreting Results & Detailed Decision Guidance": show_interpret_results_page,
+    "Bayesian Analysis Guidelines": show_bayesian_guidelines_page, # New Page
     "FAQ on Misinterpretations": show_faq_page,
     "Roadmap / Possible Future Features": show_roadmap_page
 }
@@ -502,4 +559,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.4 (Cycle 4)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.5 (Cycle 5)")
