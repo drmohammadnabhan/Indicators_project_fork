@@ -24,10 +24,10 @@ FUTURE_FEATURES = {
 
 def show_introduction_page():
     st.header("Introduction to A/B Testing 🧪")
-    st.markdown("Welcome to the A/B Testing Guide & Analyzer! This tool is designed to help beginners understand and conduct A/B tests effectively.")
+    st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") # Change 1
     st.markdown("---")
 
-    st.subheader("What is A/B Testing? (The Elevator Pitch)")
+    st.subheader("What is A/B Testing?") # Change 2
     st.markdown("""
     A/B testing (also known as split testing or bucket testing) is a method of comparing two or more versions of something—like a webpage, app feature, email headline, or call-to-action button—to determine which one performs better in achieving a specific goal.
     
@@ -50,7 +50,7 @@ def show_introduction_page():
     st.markdown("---")
 
     st.subheader("Basic A/B Testing Terminology")
-    st.markdown("Here are a few key terms you'll encounter frequently. We'll explain them in more detail as they come up in the app.")
+    st.markdown("Here are a few key terms you'll encounter frequently. More detailed explanations are available and will appear in context throughout the app.")
     
     basic_terms = {
         "Control (Version A)": "The existing, unchanged version that you're comparing against. It acts as a baseline.",
@@ -62,7 +62,7 @@ def show_introduction_page():
     for term, definition in basic_terms.items():
         st.markdown(f"**{term}:** {definition}")
 
-    with st.expander("📖 Learn more about other common A/B testing terms... (Coming in a future cycle!)"):
+    with st.expander("📖 Learn more about other common A/B testing terms... (Placeholder - Full list coming in a future cycle)"):
         st.markdown("""
         * **Lift / Uplift:** The percentage increase (or decrease) in performance of a variation compared to the control.
         * **Statistical Significance (p-value, Alpha):** A measure of whether an observed difference is likely due to a real effect or just random chance.
@@ -77,10 +77,10 @@ def show_introduction_page():
     st.markdown("""
     A typical A/B testing process involves several key steps. This app is designed to help you with some of these:
     1.  🤔 **Define Your Goal & Formulate a Hypothesis:** What do you want to improve, and what change do you believe will achieve it?
-    2.  📐 **Design Your Test & Calculate Sample Size:** Determine how many users you need for a reliable test. (➡️ *Our "Designing Your A/B Test" section will help here!*)
+    2.  📐 **Design Your Test & Calculate Sample Size:** Determine how many users you need for a reliable test. (➡️ *The "Designing Your A/B Test" section will help here!*)
     3.  🚀 **Run Your Test & Collect Data:** Implement the test and gather data on how each variation performs. (This step happens on your platform/website.)
-    4.  📊 **Analyze Your Results:** Process the collected data to compare the performance of your variations. (➡️ *Our "Analyze Results" section is built for this!*)
-    5.  🧐 **Interpret Results & Make a Decision:** Understand what the results mean and decide on the next steps. (➡️ *Our "Interpreting Results & Detailed Decision Guidance" section will guide you.*)
+    4.  📊 **Analyze Your Results:** Process the collected data to compare the performance of your variations. (➡️ *The "Analyze Results" section is built for this!*)
+    5.  🧐 **Interpret Results & Make a Decision:** Understand what the results mean and decide on the next steps. (➡️ *The "Interpreting Results & Detailed Decision Guidance" section will guide you.*)
     """)
     st.markdown("---")
     
@@ -91,9 +91,7 @@ def show_introduction_page():
     * Enabling you to **analyze the data** you've collected using both Frequentist and Bayesian statistical approaches.
     * Guiding you in **interpreting those results** to make informed, data-driven decisions.
     * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.
-    
-    We're excited to help you on your A/B testing journey!
-    """)
+    """) # Removed "We're excited..." (Change 3)
 
 def show_design_test_page():
     st.header("Designing Your A/B Test 📐")
@@ -117,7 +115,7 @@ def show_faq_page():
 
 def show_roadmap_page():
     st.header("Roadmap / Possible Future Features 🚀")
-    st.markdown("We have many exciting features planned! Here's a look at what's on our backburner for future development:")
+    st.markdown("This application has several potential features planned for future development:") # Changed wording slightly (Change 3)
     
     if FUTURE_FEATURES:
         for feature, description in FUTURE_FEATURES.items():
@@ -125,7 +123,7 @@ def show_roadmap_page():
     else:
         st.write("No future features currently listed.")
     st.markdown("---")
-    st.markdown("Your feedback can help us prioritize! Let us know which of these would be most valuable to you.")
+    st.markdown("Feedback on feature prioritization is welcome.") # Changed wording (Change 3)
 
 
 # --- Main App Navigation ---
@@ -146,4 +144,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.1 (Cycle 1)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.1.1 (Cycle 1 - Revised)")
