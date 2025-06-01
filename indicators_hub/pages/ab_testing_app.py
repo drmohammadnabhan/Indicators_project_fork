@@ -1,4 +1,7 @@
 import streamlit as st
+import numpy as np
+from scipy.stats import norm
+import math
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -20,17 +23,67 @@ FUTURE_FEATURES = {
     "Support for Ratio Metrics": "Enable analysis for metrics that are ratios of two continuous variables (e.g., revenue per transaction)."
 }
 
-# --- Page Functions ---
+# --- Helper Function for Sample Size Calculation (Binary) ---
+def calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variations):
+    """
+    Calculates the required sample size per variation for a binary outcome A/B/n test.
+    Assumes pairwise comparisons against a single control group.
+    MDE is absolute.
+    Alpha is for a two-sided test.
+    """
+    if baseline_cr <= 0 or baseline_cr >= 1:
+        return None, "Baseline Conversion Rate (BCR) must be between 0 and 1 (exclusive)."
+    if mde_abs <= 0:
+        return None, "Minimum Detectable Effect (MDE) must be positive."
+    if power <= 0 or power >= 1:
+        return None, "Statistical Power must be between 0 and 1 (exclusive)."
+    if alpha <= 0 or alpha >= 1:
+        return None, "Significance Level (Alpha) must be between 0 and 1 (exclusive)."
+    if num_variations < 2:
+        return None, "Number of variations (including control) must be at least 2."
 
+    # Parameters for the formula
+    p1 = baseline_cr
+    p2 = baseline_cr + mde_abs
+
+    if p2 >= 1 or p2 <=0: # Check if MDE pushes CR out of bounds
+        return None, f"MDE ({mde_abs*100:.2f}%) results in an invalid target conversion rate ({p2*100:.2f}%). Adjust BCR or MDE."
+
+    # Z-scores
+    z_alpha_half = norm.ppf(1 - alpha / 2)  # For two-sided test
+    z_beta = norm.ppf(power)
+
+    # Pooled proportion (sometimes used, but individual variances more common)
+    # p_bar = (p1 + p2) / 2
+    # variance = 2 * p_bar * (1 - p_bar) # if assuming equal variance under null
+    
+    # Using individual variances (more standard for two proportions)
+    variance_p1 = p1 * (1 - p1)
+    variance_p2 = p2 * (1 - p2)
+    
+    # Sample size formula (per group for two groups)
+    # n_per_variation = ( (z_alpha_half * math.sqrt(variance)) + (z_beta * math.sqrt(variance_p1 + variance_p2)) )**2 / (mde_abs**2)
+    # A common formula variant:
+    numerator = (z_alpha_half + z_beta)**2 * (variance_p1 + variance_p2)
+    denominator = mde_abs**2
+    
+    if denominator == 0: # Should be caught by mde_abs > 0
+        return None, "MDE cannot be zero."
+
+    n_per_variation = numerator / denominator
+    
+    return math.ceil(n_per_variation), None
+
+
+# --- Page Functions ---
 def show_introduction_page():
     st.header("Introduction to A/B Testing 🧪")
-    st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") # Change 1
+    st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.")
     st.markdown("---")
 
-    st.subheader("What is A/B Testing?") # Change 2
+    st.subheader("What is A/B Testing?")
     st.markdown("""
     A/B testing (also known as split testing or bucket testing) is a method of comparing two or more versions of something—like a webpage, app feature, email headline, or call-to-action button—to determine which one performs better in achieving a specific goal.
-    
     The core idea is to make **data-driven decisions** rather than relying on gut feelings or opinions. You show one version (the 'control' or 'A') to one group of users, and another version (the 'variation' or 'B') to a different group of users, simultaneously. Then, you measure how each version performs based on your key metric (e.g., conversion rate).
     """)
     st.markdown("""
@@ -91,12 +144,121 @@ def show_introduction_page():
     * Enabling you to **analyze the data** you've collected using both Frequentist and Bayesian statistical approaches.
     * Guiding you in **interpreting those results** to make informed, data-driven decisions.
     * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.
-    """) # Removed "We're excited..." (Change 3)
+    """)
 
 def show_design_test_page():
     st.header("Designing Your A/B Test 📐")
-    st.write("Content for designing your test, including the Sample Size Calculator, will be implemented in Cycle 2.")
-    st.info("Coming soon: Sample Size Calculator and more!")
+    st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation for tests with **binary outcomes** (e.g., conversion rates, click-through rates).")
+    st.markdown("---")
+    
+    st.subheader("Sample Size Calculator (for Binary Outcomes)")
+
+    # Inputs for Sample Size Calculator
+    st.markdown("**Calculator Inputs:**")
+    
+    cols = st.columns(2)
+    with cols[0]:
+        baseline_cr_percent = st.number_input(
+            label="Baseline Conversion Rate (BCR) (%)",
+            min_value=0.1,
+            max_value=99.9,
+            value=5.0,
+            step=0.1,
+            format="%.1f",
+            help="The current conversion rate of your control group (Version A). For example, if 5 out of 100 users convert, your BCR is 5%."
+        )
+    with cols[1]:
+        mde_abs_percent = st.number_input(
+            label="Minimum Detectable Effect (MDE) - Absolute (%)",
+            min_value=0.1,
+            max_value=50.0, # Practical upper limit
+            value=1.0, # e.g. lift from 5% to 6%
+            step=0.1,
+            format="%.1f",
+            help="The smallest *absolute* improvement you want to detect (e.g., a 1% absolute increase from BCR). A smaller MDE requires a larger sample size."
+        )
+    
+    cols2 = st.columns(2)
+    with cols2[0]:
+        power_percent = st.slider(
+            label="Statistical Power (1 - β) (%)",
+            min_value=50,
+            max_value=99,
+            value=80,
+            step=1,
+            format="%d%%",
+            help="The probability of detecting an effect if there is one (typically 80-90%). Higher power reduces the chance of a false negative but requires more samples."
+        )
+    with cols2[1]:
+        alpha_percent = st.slider(
+            label="Significance Level (α) (%) - Two-sided",
+            min_value=1,
+            max_value=20,
+            value=5,
+            step=1,
+            format="%d%%",
+            help="The probability of detecting an effect when there isn't one (typically 1-5%). This is your risk tolerance for a false positive. A two-sided test is assumed."
+        )
+        
+    num_variations = st.number_input(
+        label="Number of Variations (including Control)",
+        min_value=2,
+        value=2,
+        step=1,
+        help="Total number of versions you are testing (e.g., Control + 1 Variation = 2; Control + 2 Variations = 3)."
+    )
+
+    st.markdown(
+        "<p style='font-size: smaller; font-style: italic;'>Note: This calculator determines sample size based on pairwise comparisons against the control group, each at the specified significance level (α).</p>", 
+        unsafe_allow_html=True
+    )
+
+    if st.button("Calculate Sample Size"):
+        # Convert percentages to proportions for calculation
+        baseline_cr = baseline_cr_percent / 100.0
+        mde_abs = mde_abs_percent / 100.0
+        power = power_percent / 100.0
+        alpha = alpha_percent / 100.0
+
+        sample_size_per_variation, error_message = calculate_binary_sample_size(
+            baseline_cr, mde_abs, power, alpha, num_variations
+        )
+
+        if error_message:
+            st.error(error_message)
+        elif sample_size_per_variation is not None:
+            st.success(f"Calculation Successful!")
+            
+            target_cr_percent = (baseline_cr + mde_abs) * 100
+            
+            res_cols = st.columns(2)
+            with res_cols[0]:
+                st.metric(
+                    label="Required Sample Size PER Variation",
+                    value=f"{sample_size_per_variation:,}"
+                )
+            with res_cols[1]:
+                st.metric(
+                    label="Total Required Sample Size",
+                    value=f"{(sample_size_per_variation * num_variations):,}"
+                )
+            
+            st.markdown(f"""
+            **Summary of Inputs:**
+            - Baseline Conversion Rate (BCR): `{baseline_cr_percent:.1f}%`
+            - Absolute MDE: `{mde_abs_percent:.1f}%` (Targeting a CR of at least `{target_cr_percent:.2f}%` for variations)
+            - Statistical Power: `{power_percent}%`
+            - Significance Level (α): `{alpha_percent}%` (two-sided)
+            - Number of Variations: `{num_variations}`
+            
+            This means you'll need approximately **{sample_size_per_variation:,} users/observations for your control group** and **{sample_size_per_variation:,} users/observations for each of your other test variations** to confidently detect the specified MDE.
+            """)
+        else:
+            st.error("An unexpected error occurred during calculation.")
+
+    st.markdown("---")
+    st.info("Coming in future cycles: Sample Size Calculator for Continuous Outcomes, 'Common Pitfalls' content.")
+
 
 def show_analyze_results_page():
     st.header("Analyze Results 📊")
@@ -115,7 +277,7 @@ def show_faq_page():
 
 def show_roadmap_page():
     st.header("Roadmap / Possible Future Features 🚀")
-    st.markdown("This application has several potential features planned for future development:") # Changed wording slightly (Change 3)
+    st.markdown("This application has several potential features planned for future development:")
     
     if FUTURE_FEATURES:
         for feature, description in FUTURE_FEATURES.items():
@@ -123,7 +285,7 @@ def show_roadmap_page():
     else:
         st.write("No future features currently listed.")
     st.markdown("---")
-    st.markdown("Feedback on feature prioritization is welcome.") # Changed wording (Change 3)
+    st.markdown("Feedback on feature prioritization is welcome.")
 
 
 # --- Main App Navigation ---
@@ -144,4 +306,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.1.1 (Cycle 1 - Revised)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.2 (Cycle 2)")
