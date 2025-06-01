@@ -45,20 +45,25 @@ def calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variati
     p1 = baseline_cr
     p2 = baseline_cr + mde_abs
 
-    if p2 >= 1 or p2 <=0:
-        return None, f"MDE ({mde_abs*100:.2f}%) results in an invalid target conversion rate ({p2*100:.2f}%). Adjust BCR or MDE."
+    if p2 >= 1 or p2 <=0: # Check if MDE pushes CR out of bounds (p2 should be >0 and <1)
+        if p2 >=1:
+             return None, f"MDE ({mde_abs*100:.2f}%) results in a target conversion rate of {p2*100:.2f}% or more, which is not possible. Adjust BCR or MDE."
+        if p2 <=0:
+             return None, f"MDE ({mde_abs*100:.2f}%) results in a target conversion rate of {p2*100:.2f}% or less, which is not possible. Adjust BCR or MDE."
 
-    z_alpha_half = norm.ppf(1 - alpha / 2)
+
+    z_alpha_half = norm.ppf(1 - alpha / 2)  # For two-sided test
     z_beta = norm.ppf(power)
     
     variance_p1 = p1 * (1 - p1)
     variance_p2 = p2 * (1 - p2)
     
+    # Sample size formula (per group for comparing two proportions)
     numerator = (z_alpha_half + z_beta)**2 * (variance_p1 + variance_p2)
-    denominator = mde_abs**2
+    denominator = mde_abs**2 # MDE is (p2 - p1)
     
     if denominator == 0: 
-        return None, "MDE cannot be zero."
+        return None, "MDE cannot be zero (already checked by mde_abs > 0)." # Should be caught by mde_abs > 0
 
     n_per_variation = numerator / denominator
     
@@ -68,12 +73,13 @@ def calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variati
 # --- Page Functions ---
 def show_introduction_page():
     st.header("Introduction to A/B Testing 🧪")
-    st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.")
+    st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
 
-    st.subheader("What is A/B Testing?")
+    st.subheader("What is A/B Testing?") 
     st.markdown("""
     A/B testing (also known as split testing or bucket testing) is a method of comparing two or more versions of something—like a webpage, app feature, email headline, or call-to-action button—to determine which one performs better in achieving a specific goal.
+    
     The core idea is to make **data-driven decisions** rather than relying on gut feelings or opinions. You show one version (the 'control' or 'A') to one group of users, and another version (the 'variation' or 'B') to a different group of users, simultaneously. Then, you measure how each version performs based on your key metric (e.g., conversion rate).
     """)
     st.markdown("""
@@ -136,14 +142,6 @@ def show_introduction_page():
     * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.
     """)
 
-# Ensure these imports are at the top of your script
-import streamlit as st
-import numpy as np
-from scipy.stats import norm
-import math
-
-# ... (Keep other parts of your script like Page Configuration, FUTURE_FEATURES, helper functions, other page functions)
-
 def show_design_test_page():
     st.header("Designing Your A/B Test 📐")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation for tests with **binary outcomes** (e.g., conversion rates, click-through rates).")
@@ -170,15 +168,13 @@ def show_design_test_page():
     cols2 = st.columns(2)
     with cols2[0]:
         power_percent = st.slider(
-            # Using spelled out "Beta" in label for clarity as LaTeX in labels is not directly rendered
-            label="Statistical Power (1 - Beta) (%)", 
+            label="Statistical Power (1 - \u03B2) (%)", # Using Unicode for Beta
             min_value=50, max_value=99, value=80, step=1, format="%d%%",
             help="The probability of detecting an effect if there is one (typically 80-90%). Higher power reduces the chance of a false negative but requires more samples."
         )
     with cols2[1]:
         alpha_percent = st.slider(
-            # Using spelled out "Alpha" in label
-            label="Significance Level (Alpha) (%) - Two-sided", 
+            label="Significance Level (\u03B1) (%) - Two-sided", # Using Unicode for Alpha
             min_value=1, max_value=20, value=5, step=1, format="%d%%",
             help="The probability of detecting an effect when there isn't one (typically 1-5%). This is your risk tolerance for a false positive. A two-sided test is assumed."
         )
@@ -190,8 +186,8 @@ def show_design_test_page():
     )
 
     st.markdown(
-        "<p style='font-size: smaller; font-style: italic;'>Note: This calculator determines sample size based on pairwise comparisons against the control group, each at the specified significance level (α).</p>", 
-        unsafe_allow_html=True
+        "<p style='font-size: smaller; font-style: italic;'>Note: This calculator determines sample size based on pairwise comparisons against the control group, each at the specified significance level (\u03B1).</p>", 
+        unsafe_allow_html=True # Using Unicode for Alpha here too
     )
 
     if st.button("Calculate Sample Size"):
@@ -216,12 +212,13 @@ def show_design_test_page():
             with res_cols[1]:
                 st.metric(label="Total Required Sample Size", value=f"{(sample_size_per_variation * num_variations):,}")
             
+            # Using Unicode for Greek letters in the f-string summary
             st.markdown(f"""
             **Summary of Inputs Used:**
             - Baseline Conversion Rate (BCR): `{baseline_cr_percent:.1f}%`
             - Absolute MDE: `{mde_abs_percent:.1f}%` (Targeting a CR of at least `{target_cr_percent:.2f}%` for variations)
-            - Statistical Power: `{power_percent}%` (1 - $\beta$)
-            - Significance Level (α): `{alpha_percent}%` (two-sided)
+            - Statistical Power: `{power_percent}%` (1 - \u03B2) 
+            - Significance Level (\u03B1): `{alpha_percent}%` (two-sided)
             - Number of Variations: `{num_variations}`
             
             This means you'll need approximately **{sample_size_per_variation:,} users/observations for your control group** and **{sample_size_per_variation:,} users/observations for each of your other test variations** to confidently detect the specified MDE.
@@ -246,6 +243,7 @@ def show_design_test_page():
 
     st.markdown("---")
     with st.expander("💡 Understanding Input Impacts on Sample Size"):
+        # Using r""" for raw string and LaTeX for Greek letters for best rendering
         st.markdown(r"""
         Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively:
 
@@ -272,13 +270,10 @@ def show_design_test_page():
             * *Trade-off:* Testing more variations allows you to explore more ideas simultaneously. However, it requires more overall traffic/time and can increase the complexity of analysis and decision-making. Each additional variation needs to "earn its keep" by representing a distinct, valuable hypothesis.
         
         Balancing these factors is key to designing a test that is both statistically sound and practically feasible for your resources and timelines.
-        """) # Added r""" for raw string to ensure LaTeX renders correctly
+        """)
 
     st.markdown("---")
     st.info("Coming in future cycles: Sample Size Calculator for Continuous Outcomes, 'Common Pitfalls' content.")
-
-# ... (The rest of your app code: show_introduction_page, show_analyze_results_page, etc. and the main navigation logic)
-# Ensure you replace the old show_design_test_page with this new one in your main script.
 
 
 def show_analyze_results_page():
@@ -326,4 +321,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.2.1 (Cycle 2 - Enhanced)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.2.2 (Cycle 2 - Final)")
