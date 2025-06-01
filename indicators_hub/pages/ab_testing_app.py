@@ -42,32 +42,22 @@ def calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variati
     if num_variations < 2:
         return None, "Number of variations (including control) must be at least 2."
 
-    # Parameters for the formula
     p1 = baseline_cr
     p2 = baseline_cr + mde_abs
 
-    if p2 >= 1 or p2 <=0: # Check if MDE pushes CR out of bounds
+    if p2 >= 1 or p2 <=0:
         return None, f"MDE ({mde_abs*100:.2f}%) results in an invalid target conversion rate ({p2*100:.2f}%). Adjust BCR or MDE."
 
-    # Z-scores
-    z_alpha_half = norm.ppf(1 - alpha / 2)  # For two-sided test
+    z_alpha_half = norm.ppf(1 - alpha / 2)
     z_beta = norm.ppf(power)
-
-    # Pooled proportion (sometimes used, but individual variances more common)
-    # p_bar = (p1 + p2) / 2
-    # variance = 2 * p_bar * (1 - p_bar) # if assuming equal variance under null
     
-    # Using individual variances (more standard for two proportions)
     variance_p1 = p1 * (1 - p1)
     variance_p2 = p2 * (1 - p2)
     
-    # Sample size formula (per group for two groups)
-    # n_per_variation = ( (z_alpha_half * math.sqrt(variance)) + (z_beta * math.sqrt(variance_p1 + variance_p2)) )**2 / (mde_abs**2)
-    # A common formula variant:
     numerator = (z_alpha_half + z_beta)**2 * (variance_p1 + variance_p2)
     denominator = mde_abs**2
     
-    if denominator == 0: # Should be caught by mde_abs > 0
+    if denominator == 0: 
         return None, "MDE cannot be zero."
 
     n_per_variation = numerator / denominator
@@ -153,28 +143,19 @@ def show_design_test_page():
     
     st.subheader("Sample Size Calculator (for Binary Outcomes)")
 
-    # Inputs for Sample Size Calculator
     st.markdown("**Calculator Inputs:**")
     
     cols = st.columns(2)
     with cols[0]:
         baseline_cr_percent = st.number_input(
             label="Baseline Conversion Rate (BCR) (%)",
-            min_value=0.1,
-            max_value=99.9,
-            value=5.0,
-            step=0.1,
-            format="%.1f",
+            min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
             help="The current conversion rate of your control group (Version A). For example, if 5 out of 100 users convert, your BCR is 5%."
         )
     with cols[1]:
         mde_abs_percent = st.number_input(
             label="Minimum Detectable Effect (MDE) - Absolute (%)",
-            min_value=0.1,
-            max_value=50.0, # Practical upper limit
-            value=1.0, # e.g. lift from 5% to 6%
-            step=0.1,
-            format="%.1f",
+            min_value=0.1, max_value=50.0, value=1.0, step=0.1, format="%.1f",
             help="The smallest *absolute* improvement you want to detect (e.g., a 1% absolute increase from BCR). A smaller MDE requires a larger sample size."
         )
     
@@ -182,29 +163,19 @@ def show_design_test_page():
     with cols2[0]:
         power_percent = st.slider(
             label="Statistical Power (1 - β) (%)",
-            min_value=50,
-            max_value=99,
-            value=80,
-            step=1,
-            format="%d%%",
+            min_value=50, max_value=99, value=80, step=1, format="%d%%",
             help="The probability of detecting an effect if there is one (typically 80-90%). Higher power reduces the chance of a false negative but requires more samples."
         )
     with cols2[1]:
         alpha_percent = st.slider(
             label="Significance Level (α) (%) - Two-sided",
-            min_value=1,
-            max_value=20,
-            value=5,
-            step=1,
-            format="%d%%",
+            min_value=1, max_value=20, value=5, step=1, format="%d%%",
             help="The probability of detecting an effect when there isn't one (typically 1-5%). This is your risk tolerance for a false positive. A two-sided test is assumed."
         )
         
     num_variations = st.number_input(
         label="Number of Variations (including Control)",
-        min_value=2,
-        value=2,
-        step=1,
+        min_value=2, value=2, step=1,
         help="Total number of versions you are testing (e.g., Control + 1 Variation = 2; Control + 2 Variations = 3)."
     )
 
@@ -214,7 +185,6 @@ def show_design_test_page():
     )
 
     if st.button("Calculate Sample Size"):
-        # Convert percentages to proportions for calculation
         baseline_cr = baseline_cr_percent / 100.0
         mde_abs = mde_abs_percent / 100.0
         power = power_percent / 100.0
@@ -228,23 +198,16 @@ def show_design_test_page():
             st.error(error_message)
         elif sample_size_per_variation is not None:
             st.success(f"Calculation Successful!")
-            
             target_cr_percent = (baseline_cr + mde_abs) * 100
             
             res_cols = st.columns(2)
             with res_cols[0]:
-                st.metric(
-                    label="Required Sample Size PER Variation",
-                    value=f"{sample_size_per_variation:,}"
-                )
+                st.metric(label="Required Sample Size PER Variation", value=f"{sample_size_per_variation:,}")
             with res_cols[1]:
-                st.metric(
-                    label="Total Required Sample Size",
-                    value=f"{(sample_size_per_variation * num_variations):,}"
-                )
+                st.metric(label="Total Required Sample Size", value=f"{(sample_size_per_variation * num_variations):,}")
             
             st.markdown(f"""
-            **Summary of Inputs:**
+            **Summary of Inputs Used:**
             - Baseline Conversion Rate (BCR): `{baseline_cr_percent:.1f}%`
             - Absolute MDE: `{mde_abs_percent:.1f}%` (Targeting a CR of at least `{target_cr_percent:.2f}%` for variations)
             - Statistical Power: `{power_percent}%`
@@ -253,8 +216,54 @@ def show_design_test_page():
             
             This means you'll need approximately **{sample_size_per_variation:,} users/observations for your control group** and **{sample_size_per_variation:,} users/observations for each of your other test variations** to confidently detect the specified MDE.
             """)
+            
+            # --- Show Formula Expander ---
+            with st.expander("Show Formula Used for Sample Size Calculation"):
+                st.markdown("The sample size ($n$) per variation for comparing two proportions is commonly calculated using:")
+                st.latex(r'''
+                n = \frac{(Z_{\alpha/2} + Z_{\beta})^2 \cdot (p_1(1-p_1) + p_2(1-p_2))}{(p_2 - p_1)^2}
+                ''')
+                st.markdownWhere:**
+                - $n$ = Sample size per variation
+                - $p_1$ = Baseline Conversion Rate (BCR) of the control group
+                - $p_2$ = Expected conversion rate of the variation group ($p_1 + \text{MDE}$)
+                - $Z_{\alpha/2}$ = Z-score corresponding to the chosen significance level $\alpha$ for a two-sided test (e.g., 1.96 for $\alpha=0.05$)
+                - $Z_{\beta}$ = Z-score corresponding to the chosen statistical power (1 - $\beta$) (e.g., 0.84 for 80% power)
+                - MDE (Minimum Detectable Effect) = $p_2 - p_1$ (absolute difference)
+                """)
         else:
             st.error("An unexpected error occurred during calculation.")
+
+    st.markdown("---")
+    # --- New Expander for Input Impacts ---
+    with st.expander("💡 Understanding Input Impacts on Sample Size"):
+        st.markdown("""
+        Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively:
+
+        * **Baseline Conversion Rate (BCR):**
+            * *Impact:* The required sample size tends to be largest when BCR is close to 50% (for a given MDE). It decreases as BCR moves towards 0% or 100%.
+            * *Trade-off:* This is usually an existing fact about your current performance. While you don't typically 'trade it off', knowing this helps understand why tests for metrics around 50% CR might require more users than metrics with very low or very high CRs.
+
+        * **Minimum Detectable Effect (MDE):**
+            * *Impact:* This is one of the most influential factors.
+                * *Decreasing* MDE (wanting to detect smaller improvements) **significantly increases** the required sample size.
+                * *Increasing* MDE (being okay with only detecting larger improvements) **decreases** the sample size.
+            * *Trade-off:* A smaller MDE allows you to find more subtle, incremental wins, but at the cost of needing more users and potentially longer test durations. A larger MDE is cheaper/faster but you risk missing smaller, yet potentially valuable, effects. Consider the business value of the smallest change you'd care to implement.
+
+        * **Statistical Power (1 - $\beta$):**
+            * *Impact:* *Increasing* power **increases** the required sample size.
+            * *Trade-off:* Higher power (e.g., 90% vs. 80%) reduces your risk of a Type II error (a "false negative" – failing to detect a real improvement when one exists). This increased confidence comes at the cost of more samples. Lowering power makes tests cheaper but increases the risk of missing out on actual winning variations. 80% is a common standard.
+
+        * **Significance Level ($\alpha$):**
+            * *Impact:* *Decreasing* alpha (e.g., from 5% to 1%) **increases** the required sample size. (A lower alpha means you're being more stringent).
+            * *Trade-off:* A lower alpha reduces your risk of a Type I error (a "false positive" – concluding there's an improvement when there isn't one). This means you'll have more confidence in any "winning" result you declare. However, this greater certainty requires more samples. Increasing alpha (e.g., to 10%) reduces sample size but increases the risk of implementing a change that isn't truly better. 5% is a common standard.
+        
+        * **Number of Variations:**
+            * *Impact:* The sample size *per variation* (as calculated by the formula above) remains the same. However, the **total sample size** for the entire experiment increases proportionally with the number of variations.
+            * *Trade-off:* Testing more variations allows you to explore more ideas simultaneously. However, it requires more overall traffic/time and can increase the complexity of analysis and decision-making. Each additional variation needs to "earn its keep" by representing a distinct, valuable hypothesis.
+        
+        Balancing these factors is key to designing a test that is both statistically sound and practically feasible for your resources and timelines.
+        """)
 
     st.markdown("---")
     st.info("Coming in future cycles: Sample Size Calculator for Continuous Outcomes, 'Common Pitfalls' content.")
@@ -301,9 +310,8 @@ PAGES = {
 
 selection = st.sidebar.radio("Go to", list(PAGES.keys()))
 
-# Display the selected page
 page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.2 (Cycle 2)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.2.1 (Cycle 2 - Enhanced)")
