@@ -217,25 +217,24 @@ def show_design_test_page():
             This means you'll need approximately **{sample_size_per_variation:,} users/observations for your control group** and **{sample_size_per_variation:,} users/observations for each of your other test variations** to confidently detect the specified MDE.
             """)
             
-            # --- Show Formula Expander ---
             with st.expander("Show Formula Used for Sample Size Calculation"):
-                st.markdown("The sample size ($n$) per variation for comparing two proportions is commonly calculated using:")
+                st.markdown("The sample size (<span class="math-inline">n</span>) per variation for comparing two proportions is commonly calculated using:")
                 st.latex(r'''
                 n = \frac{(Z_{\alpha/2} + Z_{\beta})^2 \cdot (p_1(1-p_1) + p_2(1-p_2))}{(p_2 - p_1)^2}
                 ''')
-                st.markdownWhere:**
-                - $n$ = Sample size per variation
-                - $p_1$ = Baseline Conversion Rate (BCR) of the control group
-                - $p_2$ = Expected conversion rate of the variation group ($p_1 + \text{MDE}$)
-                - $Z_{\alpha/2}$ = Z-score corresponding to the chosen significance level $\alpha$ for a two-sided test (e.g., 1.96 for $\alpha=0.05$)
-                - $Z_{\beta}$ = Z-score corresponding to the chosen statistical power (1 - $\beta$) (e.g., 0.84 for 80% power)
-                - MDE (Minimum Detectable Effect) = $p_2 - p_1$ (absolute difference)
+                st.markdown("**Where:**") # Corrected line
+                st.markdown(r"""
+                - <span class="math-inline">n</span> = Sample size per variation
+                - <span class="math-inline">p\_1</span> = Baseline Conversion Rate (BCR) of the control group (as a proportion, e.g., 0.05 for 5%)
+                - <span class="math-inline">p\_2</span> = Expected conversion rate of the variation group (<span class="math-inline">p\_1 \+ \\text\{MDE\}</span>, as a proportion)
+                - <span class="math-inline">Z\_\{\\alpha/2\}</span> = Z-score corresponding to the chosen significance level <span class="math-inline">\\alpha</span> for a two-sided test (e.g., 1.96 for <span class="math-inline">\\alpha\=0\.05</span>)
+                - <span class="math-inline">Z\_\{\\beta\}</span> = Z-score corresponding to the chosen statistical power (1 - <span class="math-inline">\\beta</span>) (e.g., 0.84 for 80% power)
+                - MDE (Minimum Detectable Effect) = <span class="math-inline">p\_2 \- p\_1</span> (absolute difference, as a proportion)
                 """)
         else:
             st.error("An unexpected error occurred during calculation.")
 
     st.markdown("---")
-    # --- New Expander for Input Impacts ---
     with st.expander("💡 Understanding Input Impacts on Sample Size"):
         st.markdown("""
         Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively:
@@ -250,11 +249,11 @@ def show_design_test_page():
                 * *Increasing* MDE (being okay with only detecting larger improvements) **decreases** the sample size.
             * *Trade-off:* A smaller MDE allows you to find more subtle, incremental wins, but at the cost of needing more users and potentially longer test durations. A larger MDE is cheaper/faster but you risk missing smaller, yet potentially valuable, effects. Consider the business value of the smallest change you'd care to implement.
 
-        * **Statistical Power (1 - $\beta$):**
+        * **Statistical Power (1 - <span class="math-inline">\\beta</span>):**
             * *Impact:* *Increasing* power **increases** the required sample size.
             * *Trade-off:* Higher power (e.g., 90% vs. 80%) reduces your risk of a Type II error (a "false negative" – failing to detect a real improvement when one exists). This increased confidence comes at the cost of more samples. Lowering power makes tests cheaper but increases the risk of missing out on actual winning variations. 80% is a common standard.
 
-        * **Significance Level ($\alpha$):**
+        * **Significance Level (<span class="math-inline">\\alpha</span>):**
             * *Impact:* *Decreasing* alpha (e.g., from 5% to 1%) **increases** the required sample size. (A lower alpha means you're being more stringent).
             * *Trade-off:* A lower alpha reduces your risk of a Type I error (a "false positive" – concluding there's an improvement when there isn't one). This means you'll have more confidence in any "winning" result you declare. However, this greater certainty requires more samples. Increasing alpha (e.g., to 10%) reduces sample size but increases the risk of implementing a change that isn't truly better. 5% is a common standard.
         
