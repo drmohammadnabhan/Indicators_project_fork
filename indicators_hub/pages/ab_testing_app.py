@@ -136,6 +136,14 @@ def show_introduction_page():
     * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.
     """)
 
+# Ensure these imports are at the top of your script
+import streamlit as st
+import numpy as np
+from scipy.stats import norm
+import math
+
+# ... (Keep other parts of your script like Page Configuration, FUTURE_FEATURES, helper functions, other page functions)
+
 def show_design_test_page():
     st.header("Designing Your A/B Test 📐")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation for tests with **binary outcomes** (e.g., conversion rates, click-through rates).")
@@ -162,13 +170,15 @@ def show_design_test_page():
     cols2 = st.columns(2)
     with cols2[0]:
         power_percent = st.slider(
-            label="Statistical Power (1 - β) (%)",
+            # Using spelled out "Beta" in label for clarity as LaTeX in labels is not directly rendered
+            label="Statistical Power (1 - Beta) (%)", 
             min_value=50, max_value=99, value=80, step=1, format="%d%%",
             help="The probability of detecting an effect if there is one (typically 80-90%). Higher power reduces the chance of a false negative but requires more samples."
         )
     with cols2[1]:
         alpha_percent = st.slider(
-            label="Significance Level (α) (%) - Two-sided",
+            # Using spelled out "Alpha" in label
+            label="Significance Level (Alpha) (%) - Two-sided", 
             min_value=1, max_value=20, value=5, step=1, format="%d%%",
             help="The probability of detecting an effect when there isn't one (typically 1-5%). This is your risk tolerance for a false positive. A two-sided test is assumed."
         )
@@ -210,7 +220,7 @@ def show_design_test_page():
             **Summary of Inputs Used:**
             - Baseline Conversion Rate (BCR): `{baseline_cr_percent:.1f}%`
             - Absolute MDE: `{mde_abs_percent:.1f}%` (Targeting a CR of at least `{target_cr_percent:.2f}%` for variations)
-            - Statistical Power: `{power_percent}%`
+            - Statistical Power: `{power_percent}%` (1 - $\beta$)
             - Significance Level (α): `{alpha_percent}%` (two-sided)
             - Number of Variations: `{num_variations}`
             
@@ -236,7 +246,7 @@ def show_design_test_page():
 
     st.markdown("---")
     with st.expander("💡 Understanding Input Impacts on Sample Size"):
-        st.markdown("""
+        st.markdown(r"""
         Adjusting the input parameters for the sample size calculator has direct consequences on the number of users you'll need. Understanding these trade-offs is key for planning your A/B tests effectively:
 
         * **Baseline Conversion Rate (BCR):**
@@ -254,18 +264,21 @@ def show_design_test_page():
             * *Trade-off:* Higher power (e.g., 90% vs. 80%) reduces your risk of a Type II error (a "false negative" – failing to detect a real improvement when one exists). This increased confidence comes at the cost of more samples. Lowering power makes tests cheaper but increases the risk of missing out on actual winning variations. 80% is a common standard.
 
         * **Significance Level ($\alpha$):**
-            * *Impact:* *Decreasing* alpha (e.g., from 5% to 1%) **increases** the required sample size. (A lower alpha means you're being more stringent).
-            * *Trade-off:* A lower alpha reduces your risk of a Type I error (a "false positive" – concluding there's an improvement when there isn't one). This means you'll have more confidence in any "winning" result you declare. However, this greater certainty requires more samples. Increasing alpha (e.g., to 10%) reduces sample size but increases the risk of implementing a change that isn't truly better. 5% is a common standard.
+            * *Impact:* *Decreasing* $\alpha$ (e.g., from 5% to 1%) **increases** the required sample size. (A lower $\alpha$ means you're being more stringent).
+            * *Trade-off:* A lower $\alpha$ reduces your risk of a Type I error (a "false positive" – concluding there's an improvement when there isn't one). This means you'll have more confidence in any "winning" result you declare. However, this greater certainty requires more samples. Increasing $\alpha$ (e.g., to 10%) reduces sample size but increases the risk of implementing a change that isn't truly better. 5% is a common standard.
         
         * **Number of Variations:**
             * *Impact:* The sample size *per variation* (as calculated by the formula above) remains the same. However, the **total sample size** for the entire experiment increases proportionally with the number of variations.
             * *Trade-off:* Testing more variations allows you to explore more ideas simultaneously. However, it requires more overall traffic/time and can increase the complexity of analysis and decision-making. Each additional variation needs to "earn its keep" by representing a distinct, valuable hypothesis.
         
         Balancing these factors is key to designing a test that is both statistically sound and practically feasible for your resources and timelines.
-        """)
+        """) # Added r""" for raw string to ensure LaTeX renders correctly
 
     st.markdown("---")
     st.info("Coming in future cycles: Sample Size Calculator for Continuous Outcomes, 'Common Pitfalls' content.")
+
+# ... (The rest of your app code: show_introduction_page, show_analyze_results_page, etc. and the main navigation logic)
+# Ensure you replace the old show_design_test_page with this new one in your main script.
 
 
 def show_analyze_results_page():
