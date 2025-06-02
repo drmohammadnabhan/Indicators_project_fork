@@ -98,13 +98,15 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     return results, None
 
 # --- MINIMAL NEW Helper Function for Bayesian Analysis (Continuous) ---
+# This is the ONLY new function added to V0.6.1
 def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_samples=10000, ci_level=0.95):
     """
-    Minimal placeholder for Bayesian analysis for continuous outcomes.
-    Does nothing but pass for now to test syntax.
+    Extremely minimal placeholder for Bayesian analysis for continuous outcomes.
     """
-    pass # This is the only content for now
-    return {}, "Minimal placeholder: Not implemented yet."
+    # For this very first debug step, do almost nothing.
+    # This helps isolate if the function definition itself is problematic.
+    # It must return two values as expected by the calling code in later steps.
+    return {}, "Minimal placeholder: Function defined but not implemented."
 
 
 # --- Page Functions ---
@@ -284,7 +286,7 @@ def show_analyze_results_page():
     if 'metric_col_name_c6' not in st.session_state: st.session_state.metric_col_name_c6 = None
 
 
-    uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key="file_uploader_cycle7_debug_step1") # Changed key
+    uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key="file_uploader_cycle7_debug_step1")
 
     if uploaded_file is not None:
         try:
@@ -297,9 +299,9 @@ def show_analyze_results_page():
             st.subheader("1. Map Data & Select Metric Type")
             columns = df.columns.tolist()
             map_col1, map_col2, map_col3 = st.columns(3)
-            with map_col1: st.session_state.variation_col_analysis = st.selectbox("Select 'Variation ID' column:", options=columns, index=0, key="var_col_c7_debug") # Changed key
-            with map_col2: st.session_state.outcome_col_analysis = st.selectbox("Select 'Outcome' column:", options=columns, index=len(columns)-1 if len(columns)>1 else 0, key="out_col_c7_debug") # Changed key
-            with map_col3: st.session_state.metric_type_analysis_c6 = st.radio("Select Metric Type for Outcome Column:", ('Binary', 'Continuous'), key="metric_type_analysis_radio_c7_debug", horizontal=True) # Changed key
+            with map_col1: st.session_state.variation_col_analysis = st.selectbox("Select 'Variation ID' column:", options=columns, index=0, key="var_col_c7_debug")
+            with map_col2: st.session_state.outcome_col_analysis = st.selectbox("Select 'Outcome' column:", options=columns, index=len(columns)-1 if len(columns)>1 else 0, key="out_col_c7_debug")
+            with map_col3: st.session_state.metric_type_analysis_c6 = st.radio("Select Metric Type for Outcome Column:", ('Binary', 'Continuous'), key="metric_type_analysis_radio_c7_debug", horizontal=True)
 
             if st.session_state.metric_type_analysis_c6 == 'Binary':
                 success_value_options = []
@@ -309,7 +311,7 @@ def show_analyze_results_page():
                     elif len(unique_outcomes) > 2: st.warning(f"Outcome column '{st.session_state.outcome_col_analysis}' has >2 unique values: `{unique_outcomes}`. Select the success value.")
                     success_value_options = unique_outcomes
                     if len(success_value_options) > 0:
-                        success_value_str = st.selectbox(f"Which value in '{st.session_state.outcome_col_analysis}' is 'Conversion' (Success)?", options=[str(val) for val in success_value_options], index=0, key="succ_val_c7_debug") # Changed key
+                        success_value_str = st.selectbox(f"Which value in '{st.session_state.outcome_col_analysis}' is 'Conversion' (Success)?", options=[str(val) for val in success_value_options], index=0, key="succ_val_c7_debug")
                         original_dtype = df[st.session_state.outcome_col_analysis].dtype
                         if success_value_str.lower() == 'nan' and any(pd.isna(val) for val in success_value_options): st.session_state.success_value_analysis = np.nan
                         elif pd.api.types.is_numeric_dtype(original_dtype) and not pd.api.types.is_bool_dtype(original_dtype):
@@ -326,12 +328,12 @@ def show_analyze_results_page():
             st.markdown("---"); st.subheader("2. Select Your Control Group & Analysis Alpha")
             if st.session_state.variation_col_analysis and st.session_state.df_analysis_c6 is not None:
                 variation_names = st.session_state.df_analysis_c6[st.session_state.variation_col_analysis].unique().tolist()
-                if variation_names: st.session_state.control_group_name_analysis = st.selectbox("Select 'Control Group':", options=variation_names, index=0, key="ctrl_grp_c7_debug") # Changed key
+                if variation_names: st.session_state.control_group_name_analysis = st.selectbox("Select 'Control Group':", options=variation_names, index=0, key="ctrl_grp_c7_debug")
                 else: st.warning(f"No unique variations in '{st.session_state.variation_col_analysis}'.")
-            st.session_state.alpha_for_analysis = st.slider("Significance Level (\u03B1) for Analysis (%)", 1, 10, 5, 1, key="alpha_analysis_c7_slider_debug") / 100.0 # Changed key
+            st.session_state.alpha_for_analysis = st.slider("Significance Level (\u03B1) for Analysis (%)", 1, 10, 5, 1, key="alpha_analysis_c7_slider_debug") / 100.0
             
             analysis_button_label = f"🚀 Run Basic Processing & Analysis ({st.session_state.metric_type_analysis_c6} Outcome)"
-            if st.button(analysis_button_label, key="run_analysis_button_cycle7_debug_step1"): # Changed key
+            if st.button(analysis_button_label, key="run_analysis_button_cycle7_debug_step1"):
                 st.session_state.analysis_done_c6 = False
                 st.session_state.freq_summary_stats_c6 = None
                 st.session_state.bayesian_results_c6 = None 
@@ -372,18 +374,18 @@ def show_analyze_results_page():
                              if bayesian_error: st.error(f"Bayesian Analysis Error (Binary): {bayesian_error}")
                              else: st.session_state.bayesian_results_c6 = bayesian_results
                         
+                        # Call placeholder for continuous Bayesian - it will return a dummy dict and an info message
                         if st.session_state.metric_type_analysis_c6 == 'Continuous' and st.session_state.freq_summary_stats_c6 is not None:
-                            # Call the placeholder function
                             dummy_bayesian_cont_results, dummy_error_msg = run_bayesian_continuous_analysis(
                                 st.session_state.freq_summary_stats_c6, 
                                 st.session_state.control_group_name_analysis, 
                                 ci_level=(1-st.session_state.alpha_for_analysis)
                             )
-                            # Store the dummy results (which is an empty dict with predefined keys)
                             st.session_state.bayesian_results_c6 = dummy_bayesian_cont_results 
-                            # Display the message from the placeholder function
-                            if dummy_error_msg:
-                                st.info(dummy_error_msg)
+                            if dummy_error_msg and "Not implemented yet" in dummy_error_msg: # Check for specific placeholder message
+                                st.info(dummy_error_msg) # Display the placeholder message
+                            elif dummy_error_msg: # If it's another error from the placeholder
+                                st.error(f"Bayesian Continuous (Placeholder) Error: {dummy_error_msg}")
 
 
                         if st.session_state.freq_summary_stats_c6 is not None:
@@ -537,24 +539,14 @@ def show_analyze_results_page():
                 """)
             else: st.info("Bayesian results for Binary outcomes not available or could not be computed.")
         elif metric_type_display == 'Continuous':
-            # This is where the placeholder from run_bayesian_continuous_analysis will be used
-            # The function itself now returns a dict and an error message
-            # We stored the dict in st.session_state.bayesian_results_c6
-            # The error message would have been displayed when it was called if not None
             if st.session_state.bayesian_results_c6:
-                # Check if it's the dummy/placeholder result
                 is_placeholder = True
                 for var_key in st.session_state.bayesian_results_c6:
-                    # A more robust check for placeholder might be needed if the dummy structure changes
-                    if st.session_state.bayesian_results_c6[var_key].get('samples') is not None and len(st.session_state.bayesian_results_c6[var_key]['samples']) > 0:
+                    if st.session_state.bayesian_results_c6[var_key].get('samples') is not None and len(st.session_state.bayesian_results_c6[var_key]['samples']) > 0 and not np.all(np.isnan(st.session_state.bayesian_results_c6[var_key]['samples'])):
                         is_placeholder = False 
                         break
                 if is_placeholder:
                     st.info("Bayesian analysis for continuous outcomes is under active development and will be available in a future update (Cycle 7, Step 2+).")
-                else:
-                    # This block would contain the full display logic for continuous Bayesian
-                    # once the helper function is fully implemented.
-                    st.write("Full Bayesian continuous display logic to be implemented here.") 
             else:
                  st.info("Bayesian analysis for continuous outcomes is under active development (results not available).")
 
@@ -675,3 +667,4 @@ page_function()
 
 st.sidebar.markdown("---")
 st.sidebar.info("A/B Testing Guide & Analyzer | V0.7.0-alpha1-corrected (Cycle 7, Step 1)")
+```
