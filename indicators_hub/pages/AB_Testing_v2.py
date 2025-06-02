@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t as t_dist # For t-distribution (sampling and ppf)
 import math # For math.ceil and math.isinf
+import matplotlib.pyplot as plt # <<<<<<<<<<<<<<< ENSURE THIS IMPORT IS PRESENT
 
 # --- Helper Function for Bayesian Analysis (Continuous) - ISOLATED FOR TESTING ---
 def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_samples=10000, ci_level=0.95):
@@ -14,7 +15,6 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
     st.write("--- Inside run_bayesian_continuous_analysis ---") # Checkpoint 1
     results = {}
     
-    # Ensure 'Variation' column exists
     if 'Variation' not in summary_stats_df.columns:
         st.error("`summary_stats_df` must contain a 'Variation' column.")
         return None, "Missing 'Variation' column in summary_stats_df."
@@ -23,10 +23,9 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
 
     for index, row in summary_stats_df.iterrows():
         var_name = row['Variation']
-        # Ensure columns exist before trying to access them
         if not all(col in row for col in ['Users', 'Mean_Value', 'Std_Dev']):
             st.error(f"Missing one or more required columns (Users, Mean_Value, Std_Dev) for variation '{var_name}'.")
-            results[var_name] = { # Populate with NaNs to avoid KeyErrors later if var_name is used
+            results[var_name] = {
                 'samples': np.array([np.nan] * n_samples), 'posterior_mean_of_mean': np.nan, 
                 'mean_ci_low': np.nan, 'mean_ci_high': np.nan, 'df': 0, 'loc': np.nan, 
                 'scale': np.nan, 'diff_samples_vs_control': None, 'prob_better_than_control': None,
@@ -56,7 +55,7 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
         scale_t = std_dev / np.sqrt(n)
         
         st.write(f"For {var_name}: df_t={df_t}, loc_t={loc_t}, scale_t={scale_t}") # Checkpoint 4
-        if scale_t <= 0 or pd.isna(scale_t): # scale must be positive
+        if scale_t <= 0 or pd.isna(scale_t): 
             st.warning(f"Invalid scale ({scale_t}) for t-distribution for variation '{var_name}'. Skipping sampling.")
             results[var_name] = {
                 'samples': np.array([np.nan] * n_samples), 'posterior_mean_of_mean': np.nan,
@@ -98,14 +97,14 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
         data['expected_uplift_abs'] = np.nanmean(diff_samples)
 
     st.write("Processing P(Best).") # Checkpoint 7
-    all_var_names_from_summary = summary_stats_df['Variation'].tolist() # Use this for consistent ordering
+    all_var_names_from_summary = summary_stats_df['Variation'].tolist() 
     ordered_var_names_in_results = [name for name in all_var_names_from_summary if name in results and not np.all(np.isnan(results[name]['samples']))]
     
     if not ordered_var_names_in_results:
         st.warning("No variations with valid data for P(Best) calculation.")
         for var_name in all_var_names_from_summary: 
             if var_name in results: results[var_name]['prob_best'] = 0.0
-            else: results[var_name] = {'prob_best': 0.0} # Should not happen if logic above is correct
+            else: results[var_name] = {'prob_best': 0.0} 
         return results, "No variations with valid data for P(Best)."
 
     all_samples_matrix = np.array([results[var]['samples'] for var in ordered_var_names_in_results])
@@ -130,19 +129,18 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
         st.warning("Sample matrix for P(Best) calculation is not as expected.")
         for var_name in all_var_names_from_summary:
              if var_name in results: results[var_name]['prob_best'] = 1.0 if len(ordered_var_names_in_results) == 1 and var_name == ordered_var_names_in_results[0] else 0.0
-             else: results[var_name] = {'prob_best': 0.0} # Should not happen
+             else: results[var_name] = {'prob_best': 0.0}
     st.write("--- Exiting run_bayesian_continuous_analysis ---") # Checkpoint 8
     return results, None
 
 # --- Streamlit App for Testing ---
 st.title("Cycle 7 Debugger: Bayesian Continuous Analysis")
 
-# Create a dummy summary_stats DataFrame (mimicking output from frequentist part)
 data = {
     'Variation': ['Control', 'TreatmentA', 'TreatmentB', 'TreatmentC_few_users', 'TreatmentD_zero_sd'],
-    'Users': [100, 105, 98, 1, 50], # N for each group
-    'Mean_Value': [25.5, 27.1, 26.8, 30.0, 22.0], # Sample Mean for each group
-    'Std_Dev': [5.1, 5.3, 5.0, 2.0, 0.0] # Sample Std Dev for each group
+    'Users': [100, 105, 98, 1, 50], 
+    'Mean_Value': [25.5, 27.1, 26.8, 30.0, 22.0], 
+    'Std_Dev': [5.1, 5.3, 5.0, 2.0, 0.0] 
 }
 sample_summary_stats = pd.DataFrame(data)
 
@@ -158,7 +156,7 @@ if st.button("Run Bayesian Continuous Analysis Test", key="run_debug_button"):
     st.write(f"CI Level: {ci_level_input}")
     
     bayesian_results, error_msg = run_bayesian_continuous_analysis(
-        sample_summary_stats.copy(), # Pass a copy
+        sample_summary_stats.copy(), 
         control_group,
         ci_level=ci_level_input
     )
@@ -168,10 +166,9 @@ if st.button("Run Bayesian Continuous Analysis Test", key="run_debug_button"):
     
     if bayesian_results:
         st.subheader("Raw Bayesian Results Dictionary:")
-        st.json(bayesian_results) # Display the full results dictionary
+        st.json(bayesian_results) 
 
         st.subheader("Formatted Table (Example):")
-        # Example of how you might format it (similar to the main app)
         display_table = []
         for var_name_disp, res_disp in bayesian_results.items():
             display_table.append({
@@ -184,26 +181,26 @@ if st.button("Run Bayesian Continuous Analysis Test", key="run_debug_button"):
             })
         st.dataframe(pd.DataFrame(display_table))
 
-        # Example Plotting (Posterior of Means)
         st.subheader("Approx. Posterior Distributions of Group Means")
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots() 
         min_x_plot, max_x_plot = float('inf'), float('-inf')
 
-        # Determine plot range
         for var_name_plot, res_plot in bayesian_results.items():
             if 'samples' in res_plot and not np.all(np.isnan(res_plot['samples'])):
                 min_x_plot = min(min_x_plot, np.nanmin(res_plot['samples']))
                 max_x_plot = max(max_x_plot, np.nanmax(res_plot['samples']))
         
-        if math.isinf(min_x_plot) or math.isinf(max_x_plot) or pd.isna(min_x_plot) or pd.isna(max_x_plot) : # Fallback range if something went wrong
+        if math.isinf(min_x_plot) or math.isinf(max_x_plot) or pd.isna(min_x_plot) or pd.isna(max_x_plot) : 
             min_x_plot, max_x_plot = 0,1 
             if not sample_summary_stats['Mean_Value'].empty:
-                 min_x_plot = sample_summary_stats['Mean_Value'].min() - sample_summary_stats['Std_Dev'].mean() if pd.notna(sample_summary_stats['Mean_Value'].min()) else 0
-                 max_x_plot = sample_summary_stats['Mean_Value'].max() + sample_summary_stats['Std_Dev'].mean() if pd.notna(sample_summary_stats['Mean_Value'].max()) else 1
+                 min_val_data = sample_summary_stats['Mean_Value'].min()
+                 max_val_data = sample_summary_stats['Mean_Value'].max()
+                 sd_mean_data = sample_summary_stats['Std_Dev'].mean() 
+                 if pd.notna(min_val_data) and pd.notna(sd_mean_data): min_x_plot = min_val_data - sd_mean_data
+                 if pd.notna(max_val_data) and pd.notna(sd_mean_data): max_x_plot = max_val_data + sd_mean_data
                  if pd.isna(min_x_plot) or pd.isna(max_x_plot) or min_x_plot >= max_x_plot : min_x_plot, max_x_plot = 0,1
 
-
-        x_range_plot = np.linspace(min_x_plot - abs(min_x_plot*0.1), max_x_plot + abs(max_x_plot*0.1), 300)
+        x_range_plot = np.linspace(min_x_plot - abs(min_x_plot*0.1 if min_x_plot != 0 else 0.1), max_x_plot + abs(max_x_plot*0.1 if max_x_plot != 0 else 0.1), 300)
         max_density_plot = 0
 
         for var_name_plot, res_plot in bayesian_results.items():
@@ -217,11 +214,7 @@ if st.button("Run Bayesian Continuous Analysis Test", key="run_debug_button"):
         else: ax.set_ylim(0,1)
         
         ax.set_title("Approx. Posterior Distributions of Group Means")
-        ax.set_xlabel("Mean Value")
-        ax.set_ylabel("Density")
-        ax.legend()
-        st.pyplot(fig)
-        plt.close(fig) # Close the figure
-
+        ax.set_xlabel("Mean Value"); ax.set_ylabel("Density")
+        ax.legend(); st.pyplot(fig); plt.close(fig)
 else:
     st.info("Click the button to run the test analysis.")
