@@ -263,14 +263,35 @@ def show_design_test_page():
                     st.markdown(r"**Where:** $n$=Sample size per variation, $\sigma$=Standard Deviation, MDE=Absolute difference in means, $Z_{\alpha/2}$=Z-score for $\alpha$, $Z_{\beta}$=Z-score for power.")
     st.markdown("---")
     with st.expander("💡 Understanding Input Impacts on Sample Size"):
-        st.markdown(r"""Adjusting input parameters affects required sample size. Understanding these trade-offs is key:
-        * **Baseline Conversion Rate (BCR) / Baseline Mean:** ...
-        * **Standard Deviation (Continuous Metrics Only):** ...
-        * **Minimum Detectable Effect (MDE):** ...
-        * **Statistical Power (1 - $\beta$):** ...
-        * **Significance Level ($\alpha$):** ...
-        * **Number of Variations:** ... 
-        Balancing these factors is key...""")
+        st.markdown(r"""
+        Adjusting input parameters affects required sample size. Understanding these trade-offs is key:
+
+        * **Baseline Conversion Rate (BCR) / Baseline Mean:**
+            * *Binary:* Sample size largest near BCR 50%.
+            * *Continuous:* Baseline mean itself doesn't directly affect the sample size formula as much as Standard Deviation and MDE do, but understanding it sets context for the MDE.
+
+        * **Standard Deviation (Continuous Metrics Only):**
+            * *Impact:* *Increasing* Standard Deviation **significantly increases** required sample size.
+            * *Trade-off:* Higher variability in your metric naturally requires more data to detect a true signal from noise. Reducing underlying variability (if possible) can make tests more efficient.
+
+        * **Minimum Detectable Effect (MDE):** (Applies to both absolute difference in CRs or Means)
+            * *Impact:* *Decreasing* MDE **significantly increases** sample size.
+            * *Trade-off:* Detect smaller changes at higher cost (more samples/time). A larger MDE is cheaper/faster but you risk missing smaller, yet potentially valuable, effects.
+
+        * **Statistical Power (1 - $\beta$):**
+            * *Impact:* *Increasing* power **increases** sample size.
+            * *Trade-off:* Reduce risk of missing real effects (false negatives) at higher cost.
+
+        * **Significance Level ($\alpha$):**
+            * *Impact:* *Decreasing* $\alpha$ (more stringent) **increases** sample size.
+            * *Trade-off:* Reduce risk of false positives at higher cost.
+        
+        * **Number of Variations:**
+            * *Impact:* The sample size *per variation* remains the same (as it's typically calculated for a pairwise comparison against control). However, the **total sample size** for the entire experiment increases proportionally with the number of variations.
+            * *Trade-off:* Testing more variations allows exploring more ideas simultaneously but requires more overall traffic/time and can increase analytical complexity (e.g., multiple comparisons problem). Each variation should represent a distinct, valuable hypothesis.
+        
+        Balancing these factors is key for feasible, sound tests.
+        """)
     st.markdown("---")
     st.subheader("Common Pitfalls in A/B Test Design & Execution")
     pitfalls = {
@@ -297,6 +318,7 @@ def show_analyze_results_page():
     st.markdown("Upload your A/B test data (as a CSV file) to perform an analysis.")
     st.markdown("---")
 
+    # Initialize session state variables
     if 'analysis_done_c7' not in st.session_state: st.session_state.analysis_done_c7 = False
     if 'df_analysis_c7' not in st.session_state: st.session_state.df_analysis_c7 = None
     if 'metric_type_analysis_c7' not in st.session_state: st.session_state.metric_type_analysis_c7 = 'Binary'
@@ -388,16 +410,14 @@ def show_analyze_results_page():
                             st.session_state.metric_col_name_c7 = 'Mean_Value'
                             st.session_state.freq_summary_stats_c7 = summary_stats.copy()
                         
-                        if st.session_state.freq_summary_stats_c7 is not None: # Ensure summary_stats was created
+                        if st.session_state.freq_summary_stats_c7 is not None: 
                             if st.session_state.metric_type_analysis_c7 == 'Binary':
                                 bayesian_results, bayesian_error = run_bayesian_binary_analysis(st.session_state.freq_summary_stats_c7, st.session_state.control_group_name_analysis_c7, ci_level=(1-st.session_state.alpha_for_analysis_c7))
                             elif st.session_state.metric_type_analysis_c7 == 'Continuous':
                                 continuous_summary_for_bayes = st.session_state.freq_summary_stats_c7[['Variation', 'Users', 'Mean_Value', 'Std_Dev']].copy()
                                 bayesian_results, bayesian_error = run_bayesian_continuous_analysis(continuous_summary_for_bayes, st.session_state.control_group_name_analysis_c7, ci_level=(1-st.session_state.alpha_for_analysis_c7))
-                            
                             if bayesian_error: st.error(f"Bayesian Analysis Error: {bayesian_error}")
                             else: st.session_state.bayesian_results_c7 = bayesian_results
-                        
                         st.session_state.analysis_done_c7 = True
                     except Exception as e: st.error(f"An error during data processing: {e}"); st.exception(e)
         except Exception as e: st.error(f"Error reading/processing CSV: {e}"); st.exception(e)
@@ -509,7 +529,7 @@ def show_analyze_results_page():
                     bayesian_data_to_display_bin.append({"Variation": var_name, "Posterior Mean CR (%)": f"{b_res.get('mean_cr',0)*100:.2f}", f"{100*(1-alpha_display):.0f}% CrI for CR (%)": f"[{b_res.get('cr_ci_low',0)*100:.2f}, {b_res.get('cr_ci_high',0)*100:.2f}]", "P(Better > Control) (%)": prob_better_html, "Expected Uplift (abs %)": f"{b_res.get('expected_uplift_abs', 0)*100:.2f}" if b_res.get('expected_uplift_abs') is not None else "N/A (Control)", f"{100*(1-alpha_display):.0f}% CrI for Uplift (abs %)": cri_uplift_html, "P(Being Best) (%)": f"{b_res.get('prob_best',0)*100:.2f}"})
                 bayesian_df_bin = pd.DataFrame(bayesian_data_to_display_bin); st.markdown(bayesian_df_bin.to_html(escape=False), unsafe_allow_html=True)
                 st.markdown("##### Posterior Distributions for Conversion Rates"); fig_cr, ax_cr = plt.subplots()
-                metric_col_for_cr_plot = 'Metric Value (%)' if 'Metric Value (%)' in summary_stats_display.columns else 'Conversion Rate (%)' # Adapt if name changes
+                metric_col_for_cr_plot = 'Metric Value (%)' if 'Metric Value (%)' in summary_stats_display.columns else 'Conversion Rate (%)' 
                 x_cr_max_val = summary_stats_display[metric_col_for_cr_plot].str.rstrip('%').astype('float').max() / 100 if pd.api.types.is_string_dtype(summary_stats_display[metric_col_for_cr_plot]) else summary_stats_display[metric_col_for_cr_plot].max()
                 x_cr_max_val = x_cr_max_val if pd.notna(x_cr_max_val) and x_cr_max_val > 0 else 0.3 
                 x_cr_range = np.linspace(0, min(1, x_cr_max_val + 0.1), 500) 
@@ -554,13 +574,22 @@ def show_analyze_results_page():
                 fig_mean, ax_mean = plt.subplots(); min_x_mean, max_x_mean = float('inf'), float('-inf')
                 for var_name, b_res in bayesian_results_to_display.items():
                     if var_name not in summary_stats_display['Variation'].values or pd.isna(b_res.get('loc')): continue
-                    samples = b_res['samples']
-                    if not np.all(np.isnan(samples)): min_x_mean = min(min_x_mean, np.nanmin(samples)); max_x_mean = max(max_x_mean, np.nanmax(samples))
-                if math.isinf(min_x_mean) or math.isinf(max_x_mean) : min_x_mean, max_x_mean = summary_stats_display['Mean_Value'].min() - summary_stats_display['Std_Dev'].mean(), summary_stats_display['Mean_Value'].max() + summary_stats_display['Std_Dev'].mean() # Better fallback
-                if pd.isna(min_x_mean) or pd.isna(max_x_mean): min_x_mean, max_x_mean = -1, 1 # Absolute fallback
+                    samples = b_res.get('samples') # Use .get() for safety
+                    if samples is not None and not np.all(np.isnan(samples)): min_x_mean = min(min_x_mean, np.nanmin(samples)); max_x_mean = max(max_x_mean, np.nanmax(samples))
+                if math.isinf(min_x_mean) or math.isinf(max_x_mean) or pd.isna(min_x_mean) or pd.isna(max_x_mean): 
+                    # Try fallback based on actual means if sampling failed for some reason but means exist
+                    valid_means = summary_stats_display.loc[summary_stats_display['Mean_Value'].notna(), 'Mean_Value']
+                    if not valid_means.empty:
+                        min_x_mean, max_x_mean = valid_means.min(), valid_means.max()
+                        if pd.isna(min_x_mean) or pd.isna(max_x_mean) : min_x_mean, max_x_mean = -1,1 # Final fallback
+                    else: min_x_mean, max_x_mean = -1, 1 
                 
-                x_mean_range = np.linspace(min_x_mean - abs(min_x_mean*0.1) if pd.notna(min_x_mean) else -1, max_x_mean + abs(max_x_mean*0.1) if pd.notna(max_x_mean) else 1 , 500)
+                x_start = min_x_mean - abs(min_x_mean*0.2) if pd.notna(min_x_mean) else -1
+                x_end = max_x_mean + abs(max_x_mean*0.2) if pd.notna(max_x_mean) else 1
+                if x_start == x_end : x_start -=1; x_end +=1 # Avoid zero range for linspace
+                x_mean_range = np.linspace(x_start, x_end , 500)
                 max_density_mean = 0
+
                 for var_name, b_res in bayesian_results_to_display.items():
                     if var_name not in summary_stats_display['Variation'].values or pd.isna(b_res.get('loc')): continue
                     if b_res.get('df', 0) > 0 and pd.notna(b_res.get('scale')) and b_res.get('scale') > 0:
@@ -682,4 +711,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.7 (Cycle 7)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.7.1 (Cycle 7 - Corrected)")
