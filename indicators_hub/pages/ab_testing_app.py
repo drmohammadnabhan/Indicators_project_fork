@@ -675,11 +675,3 @@ page_function()
 
 st.sidebar.markdown("---")
 st.sidebar.info("A/B Testing Guide & Analyzer | V0.7.0-alpha1-corrected (Cycle 7, Step 1)")
-```
-
-**Key changes in this V0.7.0-alpha1-corrected script:**
-1.  **`show_faq_page()`:** The `faqs` dictionary within this function has been **fully restored** to include the complete answers and examples for each question, as defined in Cycle 3. The `...` placeholders have been removed.
-2.  All other parts of the code, including the placeholder `run_bayesian_continuous_analysis` function and the updated `show_bayesian_guidelines_page`, remain as they were in the V0.7.0-alpha1 script that successfully loaded for you.
-3.  The version in the sidebar is updated to reflect this correction.
-
-Please try this version. It should load without the `SyntaxError`, and the FAQ page should now display its full content. If this works, we can then confidently proceed to the next sub-step of Cycle
