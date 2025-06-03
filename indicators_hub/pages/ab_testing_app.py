@@ -98,7 +98,7 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     return results, None
 
 # --- MINIMAL NEW Helper Function for Bayesian Analysis (Continuous) ---
-# This is the ONLY new function added to V0.6.1
+# This is the ONLY new function added to V0.6.1 for this debug step
 def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_samples=10000, ci_level=0.95):
     """
     Extremely minimal placeholder for Bayesian analysis for continuous outcomes.
@@ -106,7 +106,8 @@ def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_sam
     # For this very first debug step, do almost nothing.
     # This helps isolate if the function definition itself is problematic.
     # It must return two values as expected by the calling code in later steps.
-    return {}, "Minimal placeholder: Function defined but not implemented."
+    pass # Does absolutely nothing
+    return {}, "Minimal placeholder: Function defined but not implemented yet."
 
 
 # --- Page Functions ---
@@ -122,7 +123,7 @@ def show_introduction_page():
     st.markdown("""
     A/B testing is a powerful tool because it can help you:
     * ✅ **Improve Key Metrics:** Increase conversion rates, boost engagement, drive sales, or improve any other metric you care about.
-    * ρί **Reduce Risk:** Test changes on a smaller scale before rolling them out to your entire user base, minimizing the impact of potentially negative changes.
+    * 🛡️ **Reduce Risk:** Test changes on a smaller scale before rolling them out to your entire user base, minimizing the impact of potentially negative changes.
     * 💡 **Gain Insights:** Understand your users' behavior, preferences, and motivations better. Even a "failed" test can provide valuable learnings.
     * ✨ **Optimize User Experience:** Make your website, app, or product more user-friendly and effective.
     * 🔄 **Foster Iterative Improvement:** A/B testing supports a cycle of continuous learning and optimization.
@@ -161,7 +162,7 @@ def show_introduction_page():
     st.markdown("This application aims to be your companion for the critical stages of A/B testing: * Helping you **design robust tests** by calculating the necessary sample size. * Enabling you to **analyze the data** you've collected using both Frequentist and Bayesian statistical approaches. * Guiding you in **interpreting those results** to make informed, data-driven decisions. * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.")
 
 def show_design_test_page():
-    st.header("Designing Your A/B Test 📐")
+    st.header("Designing Your A/B Test �")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation.")
     st.markdown("---")
     metric_type_ss = st.radio("Select your primary metric type for sample size calculation:", ('Binary (e.g., Conversion Rate)', 'Continuous (e.g., Average Order Value)'), key="ss_metric_type_radio_c6")
@@ -376,15 +377,18 @@ def show_analyze_results_page():
                         
                         # Call placeholder for continuous Bayesian - it will return a dummy dict and an info message
                         if st.session_state.metric_type_analysis_c6 == 'Continuous' and st.session_state.freq_summary_stats_c6 is not None:
+                            # Ensure the summary_stats passed to the placeholder has the expected columns
+                            # For the placeholder, it just needs 'Variation' to create dummy keys
+                            summary_for_cont_bayes_placeholder = st.session_state.freq_summary_stats_c6[['Variation']].copy()
                             dummy_bayesian_cont_results, dummy_error_msg = run_bayesian_continuous_analysis(
-                                st.session_state.freq_summary_stats_c6, 
+                                summary_for_cont_bayes_placeholder, 
                                 st.session_state.control_group_name_analysis, 
                                 ci_level=(1-st.session_state.alpha_for_analysis)
                             )
                             st.session_state.bayesian_results_c6 = dummy_bayesian_cont_results 
-                            if dummy_error_msg and "Not implemented yet" in dummy_error_msg: # Check for specific placeholder message
-                                st.info(dummy_error_msg) # Display the placeholder message
-                            elif dummy_error_msg: # If it's another error from the placeholder
+                            if dummy_error_msg and "Not implemented yet" in dummy_error_msg: 
+                                st.info(dummy_error_msg) 
+                            elif dummy_error_msg: 
                                 st.error(f"Bayesian Continuous (Placeholder) Error: {dummy_error_msg}")
 
 
@@ -539,10 +543,15 @@ def show_analyze_results_page():
                 """)
             else: st.info("Bayesian results for Binary outcomes not available or could not be computed.")
         elif metric_type_display == 'Continuous':
-            if st.session_state.bayesian_results_c6:
-                is_placeholder = True
+            # This is where the placeholder from run_bayesian_continuous_analysis will be used
+            if st.session_state.bayesian_results_c6: # This now holds results from run_bayesian_continuous_analysis
+                # Check if it's the dummy/placeholder result
+                is_placeholder = True 
                 for var_key in st.session_state.bayesian_results_c6:
-                    if st.session_state.bayesian_results_c6[var_key].get('samples') is not None and len(st.session_state.bayesian_results_c6[var_key]['samples']) > 0 and not np.all(np.isnan(st.session_state.bayesian_results_c6[var_key]['samples'])):
+                    # A more robust check for placeholder might be needed if the dummy structure changes
+                    if st.session_state.bayesian_results_c6[var_key].get('samples') is not None and \
+                       len(st.session_state.bayesian_results_c6[var_key]['samples']) > 0 and \
+                       not np.all(np.isnan(st.session_state.bayesian_results_c6[var_key]['samples'])):
                         is_placeholder = False 
                         break
                 if is_placeholder:
@@ -666,4 +675,4 @@ page_function = PAGES[selection]
 page_function()
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.7.0-alpha1-corrected (Cycle 7, Step 1)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.6.1.1-debug (Cycle 7 - Minimal Step 1A)")
