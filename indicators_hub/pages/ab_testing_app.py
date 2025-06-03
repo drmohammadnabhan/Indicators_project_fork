@@ -61,58 +61,62 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     if 'Variation' not in summary_stats.columns:
         original_var_col_name = summary_stats.columns[0] 
         if original_var_col_name != 'Variation': summary_stats = summary_stats.rename(columns={original_var_col_name: 'Variation'})
+            
     for index, row in summary_stats.iterrows():
-        var_name = row['Variation']; users = int(row['Users']); conversions = int(row['Conversions'])
+        var_name = row['Variation'] 
+        users = int(row['Users'])
+        conversions = int(row['Conversions'])
         alpha_post = prior_alpha + conversions; beta_post = prior_beta + (users - conversions)
         posterior_params[var_name] = {'alpha': alpha_post, 'beta': beta_post}
         samples = beta_dist.rvs(alpha_post, beta_post, size=n_samples)
-        results[var_name] = {'samples': samples, 'mean_cr': np.mean(samples), 'median_cr': np.median(samples), 'cr_ci_low': beta_dist.ppf((1-ci_level)/2, alpha_post, beta_post), 'cr_ci_high': beta_dist.ppf(1-(1-ci_level)/2, alpha_post, beta_post), 'alpha_post': alpha_post, 'beta_post': beta_post, 'diff_samples_vs_control': None}
+        results[var_name] = {'samples': samples, 'mean_cr': np.mean(samples), 'median_cr': np.median(samples), 
+                             'cr_ci_low': beta_dist.ppf((1-ci_level)/2, alpha_post, beta_post), 
+                             'cr_ci_high': beta_dist.ppf(1-(1-ci_level)/2, alpha_post, beta_post), 
+                             'alpha_post': alpha_post, 'beta_post': beta_post, 'diff_samples_vs_control': None}
+    
     if control_group_name not in results: return None, f"Control group '{control_group_name}' not found. Available: {list(results.keys())}"
     control_samples = results[control_group_name]['samples']
+    
     for var_name, data in results.items():
-        if var_name == control_group_name: data['prob_better_than_control'] = None; data['uplift_ci_low'] = None; data['uplift_ci_high'] = None; data['expected_uplift_abs'] = None; continue
+        if var_name == control_group_name: 
+            data['prob_better_than_control'] = None; data['uplift_ci_low'] = None
+            data['uplift_ci_high'] = None; data['expected_uplift_abs'] = None; continue
         var_samples = data['samples']; diff_samples = var_samples - control_samples
-        data['diff_samples_vs_control'] = diff_samples; data['prob_better_than_control'] = np.mean(diff_samples > 0)
-        data['uplift_ci_low'] = np.percentile(diff_samples, (1-ci_level)/2 * 100); data['uplift_ci_high'] = np.percentile(diff_samples, (1-(1-ci_level)/2) * 100)
+        data['diff_samples_vs_control'] = diff_samples
+        data['prob_better_than_control'] = np.mean(diff_samples > 0)
+        data['uplift_ci_low'] = np.percentile(diff_samples, (1-ci_level)/2 * 100)
+        data['uplift_ci_high'] = np.percentile(diff_samples, (1-(1-ci_level)/2) * 100)
         data['expected_uplift_abs'] = np.mean(diff_samples)
+
     all_var_names = summary_stats['Variation'].tolist()
     ordered_var_names_in_results = [name for name in all_var_names if name in results]
     if not ordered_var_names_in_results: return results, "No variations found for P(Best) calculation."
+    
     all_samples_matrix = np.array([results[var]['samples'] for var in ordered_var_names_in_results])
-    best_variation_counts = np.zeros(len(all_var_names))
+    best_variation_counts = np.zeros(len(all_var_names)) 
+
     if all_samples_matrix.ndim == 2 and all_samples_matrix.shape[0] > 0 and all_samples_matrix.shape[1] == n_samples:
         for i in range(n_samples):
             current_iter_samples = all_samples_matrix[:, i]; best_idx_in_temp_matrix = np.argmax(current_iter_samples)
             best_var_name_this_iter = ordered_var_names_in_results[best_idx_in_temp_matrix]
-            if best_var_name_this_iter in all_var_names:
+            if best_var_name_this_iter in all_var_names: 
                 original_idx_for_counts = all_var_names.index(best_var_name_this_iter)
                 best_variation_counts[original_idx_for_counts] += 1
         prob_best = best_variation_counts / n_samples
         for i, var_name in enumerate(all_var_names):
             if var_name in results: results[var_name]['prob_best'] = prob_best[i]
-            elif var_name not in results and len(ordered_var_names_in_results) < len(all_var_names): results[var_name] = {'prob_best': 0.0}
+            elif var_name not in results : results[var_name] = {'prob_best': 0.0} # Ensure entry if it was totally missing
+            elif 'prob_best' not in results[var_name]: results[var_name]['prob_best'] = 0.0 # Default if not set
+
     else: 
         for var_name in all_var_names:
              if var_name in results: results[var_name]['prob_best'] = 1.0 if len(ordered_var_names_in_results) == 1 else 0.0
              else: results[var_name] = {'prob_best': 0.0}
     return results, None
 
-# --- MINIMAL NEW Helper Function for Bayesian Analysis (Continuous) ---
-# This is the ONLY new function added to V0.6.1 for this debug step
-def run_bayesian_continuous_analysis(summary_stats_df, control_group_name, n_samples=10000, ci_level=0.95):
-    """
-    Extremely minimal placeholder for Bayesian analysis for continuous outcomes.
-    """
-    # For this very first debug step, do almost nothing.
-    # This helps isolate if the function definition itself is problematic.
-    # It must return two values as expected by the calling code in later steps.
-    pass # Does absolutely nothing
-    return {}, "Minimal placeholder: Function defined but not implemented yet."
-
-
 # --- Page Functions ---
 def show_introduction_page():
-    st.header("Introduction to A/B Testing 🧪")
+    st.header("Introduction to A/B Testing �")
     st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
     st.subheader("What is A/B Testing?") 
@@ -162,7 +166,7 @@ def show_introduction_page():
     st.markdown("This application aims to be your companion for the critical stages of A/B testing: * Helping you **design robust tests** by calculating the necessary sample size. * Enabling you to **analyze the data** you've collected using both Frequentist and Bayesian statistical approaches. * Guiding you in **interpreting those results** to make informed, data-driven decisions. * Providing **educational content** (like common pitfalls and FAQs) to improve your A/B testing knowledge.")
 
 def show_design_test_page():
-    st.header("Designing Your A/B Test �")
+    st.header("Designing Your A/B Test 📐")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation.")
     st.markdown("---")
     metric_type_ss = st.radio("Select your primary metric type for sample size calculation:", ('Binary (e.g., Conversion Rate)', 'Continuous (e.g., Average Order Value)'), key="ss_metric_type_radio_c6")
@@ -379,7 +383,7 @@ def show_analyze_results_page():
                         if st.session_state.metric_type_analysis_c6 == 'Continuous' and st.session_state.freq_summary_stats_c6 is not None:
                             # Ensure the summary_stats passed to the placeholder has the expected columns
                             # For the placeholder, it just needs 'Variation' to create dummy keys
-                            summary_for_cont_bayes_placeholder = st.session_state.freq_summary_stats_c6[['Variation']].copy()
+                            summary_for_cont_bayes_placeholder = st.session_state.freq_summary_stats_c6[['Variation']].copy() # Only pass 'Variation' for the dummy
                             dummy_bayesian_cont_results, dummy_error_msg = run_bayesian_continuous_analysis(
                                 summary_for_cont_bayes_placeholder, 
                                 st.session_state.control_group_name_analysis, 
@@ -543,12 +547,9 @@ def show_analyze_results_page():
                 """)
             else: st.info("Bayesian results for Binary outcomes not available or could not be computed.")
         elif metric_type_display == 'Continuous':
-            # This is where the placeholder from run_bayesian_continuous_analysis will be used
-            if st.session_state.bayesian_results_c6: # This now holds results from run_bayesian_continuous_analysis
-                # Check if it's the dummy/placeholder result
+            if st.session_state.bayesian_results_c6: # This will hold the dummy results from the placeholder
                 is_placeholder = True 
                 for var_key in st.session_state.bayesian_results_c6:
-                    # A more robust check for placeholder might be needed if the dummy structure changes
                     if st.session_state.bayesian_results_c6[var_key].get('samples') is not None and \
                        len(st.session_state.bayesian_results_c6[var_key]['samples']) > 0 and \
                        not np.all(np.isnan(st.session_state.bayesian_results_c6[var_key]['samples'])):
