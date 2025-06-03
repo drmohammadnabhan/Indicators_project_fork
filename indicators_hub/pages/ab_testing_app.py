@@ -6,6 +6,7 @@ import pandas as pd
 from statsmodels.stats.proportion import proportions_ztest, confint_proportions_2indep
 from scipy.stats import beta as beta_dist, gaussian_kde
 import matplotlib.pyplot as plt
+from itertools import product # For creating segment combinations
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -67,10 +68,8 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     
     for index, row in summary_stats.iterrows():
         var_name = row['Variation']; users = int(row['Users']); conversions = int(row['Conversions'])
-        # Calculate posterior parameters (Beta distribution)
         alpha_post = prior_alpha + conversions; beta_post = prior_beta + (users - conversions)
         posterior_params[var_name] = {'alpha': alpha_post, 'beta': beta_post}
-        # Generate samples from the posterior distribution
         samples = beta_dist.rvs(alpha_post, beta_post, size=n_samples)
         results[var_name] = {
             'samples': samples, 
@@ -80,13 +79,12 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
             'cr_ci_high': beta_dist.ppf(1-(1-ci_level)/2, alpha_post, beta_post), 
             'alpha_post': alpha_post, 
             'beta_post': beta_post, 
-            'diff_samples_vs_control': None # Initialize
+            'diff_samples_vs_control': None 
         }
     
     if control_group_name not in results: return None, f"Control group '{control_group_name}' not found. Available: {list(results.keys())}"
     control_samples = results[control_group_name]['samples']
     
-    # Calculate comparisons vs. control
     for var_name, data in results.items():
         if var_name == control_group_name: 
             data['prob_better_than_control'] = None
@@ -105,9 +103,8 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     ordered_var_names_in_results = [name for name in all_var_names if name in results]
     if not ordered_var_names_in_results: return results, "No variations found for P(Best) calculation."
     
-    # Calculate P(Being Best)
-    all_samples_matrix = np.array([results[var]['samples'] for var in ordered_var_names_in_results if var in results]) # Ensure var exists
-    best_variation_counts = np.zeros(len(all_var_names)) # Use original all_var_names for correct indexing
+    all_samples_matrix = np.array([results[var]['samples'] for var in ordered_var_names_in_results if var in results]) 
+    best_variation_counts = np.zeros(len(all_var_names)) 
 
     if all_samples_matrix.ndim == 2 and all_samples_matrix.shape[0] > 0 and all_samples_matrix.shape[1] == n_samples:
         best_indices = np.argmax(all_samples_matrix, axis=0)
@@ -277,7 +274,7 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
 # --- Page Functions ---
 def show_introduction_page():
     # Displays the introduction to A/B testing.
-    st.header("Introduction to A/B Testing 🧪")
+    st.header("Introduction to A/B Testing �")
     st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
     st.subheader("What is A/B Testing?") 
@@ -331,20 +328,22 @@ def show_design_test_page():
     st.header("Designing Your A/B Test 📐")
     st.markdown("A crucial step in designing an A/B test is determining the appropriate sample size. This calculator will help you estimate the number of users needed per variation.")
     st.markdown("---")
-    metric_type_ss = st.radio("Select your primary metric type for sample size calculation:", ('Binary (e.g., Conversion Rate)', 'Continuous (e.g., Average Order Value)'), key="ss_metric_type_radio_c7_3") 
+    # Use a unique key for widgets in this cycle to avoid state conflicts if testing multiple versions
+    cycle_key_suffix_ds = "_c8_1" # Cycle 8, Step 1 for Design page
+    metric_type_ss = st.radio("Select your primary metric type for sample size calculation:", ('Binary (e.g., Conversion Rate)', 'Continuous (e.g., Average Order Value)'), key=f"ss_metric_type_radio{cycle_key_suffix_ds}") 
     st.markdown("---")
     if metric_type_ss == 'Binary (e.g., Conversion Rate)':
         st.subheader("Sample Size Calculator (for Binary Outcomes)")
         st.markdown("**Calculator Inputs:**")
         cols_bin = st.columns(2)
-        with cols_bin[0]: baseline_cr_percent = st.number_input(label="Baseline Conversion Rate (BCR) (%)", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f", help="Current CR of control (e.g., 5% for 5 out of 100).", key="ss_bcr_c7_3")
-        with cols_bin[1]: mde_abs_percent = st.number_input(label="Minimum Detectable Effect (MDE) - Absolute (%)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, format="%.1f", help="Smallest absolute CR increase to detect (e.g., 1% for 5% to 6%).", key="ss_mde_c7_3")
+        with cols_bin[0]: baseline_cr_percent = st.number_input(label="Baseline Conversion Rate (BCR) (%)", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f", help="Current CR of control (e.g., 5% for 5 out of 100).", key=f"ss_bcr{cycle_key_suffix_ds}")
+        with cols_bin[1]: mde_abs_percent = st.number_input(label="Minimum Detectable Effect (MDE) - Absolute (%)", min_value=0.1, max_value=50.0, value=1.0, step=0.1, format="%.1f", help="Smallest absolute CR increase to detect (e.g., 1% for 5% to 6%).", key=f"ss_mde{cycle_key_suffix_ds}")
         cols2_bin = st.columns(2)
-        with cols2_bin[0]: power_percent_bin = st.slider(label="Statistical Power (1 - \u03B2) (%)", min_value=50, max_value=99, value=80, step=1, format="%d%%", help="Probability of detecting an effect if one exists (typically 80-90%).", key="ss_power_c7_3")
-        with cols2_bin[1]: alpha_percent_bin = st.slider(label="Significance Level (\u03B1) (%) - Two-sided", min_value=1, max_value=20, value=5, step=1, format="%d%%", help="Risk of false positive (typically 1-5%).", key="ss_alpha_c7_3")
-        num_variations_ss_bin = st.number_input(label="Number of Variations (including Control)", min_value=2, value=2, step=1, help="Total versions (e.g., Control + 1 Var = 2).", key="ss_num_var_c7_3")
+        with cols2_bin[0]: power_percent_bin = st.slider(label="Statistical Power (1 - \u03B2) (%)", min_value=50, max_value=99, value=80, step=1, format="%d%%", help="Probability of detecting an effect if one exists (typically 80-90%).", key=f"ss_power{cycle_key_suffix_ds}")
+        with cols2_bin[1]: alpha_percent_bin = st.slider(label="Significance Level (\u03B1) (%) - Two-sided", min_value=1, max_value=20, value=5, step=1, format="%d%%", help="Risk of false positive (typically 1-5%).", key=f"ss_alpha{cycle_key_suffix_ds}")
+        num_variations_ss_bin = st.number_input(label="Number of Variations (including Control)", min_value=2, value=2, step=1, help="Total versions (e.g., Control + 1 Var = 2).", key=f"ss_num_var{cycle_key_suffix_ds}")
         st.markdown("<p style='font-size: smaller; font-style: italic;'>Note: For binary, based on pairwise comparisons vs. control at specified α.</p>", unsafe_allow_html=True)
-        if st.button("Calculate Sample Size (Binary)", key="ss_calc_button_c7_3_bin"):
+        if st.button("Calculate Sample Size (Binary)", key=f"ss_calc_button{cycle_key_suffix_ds}_bin"):
             baseline_cr, mde_abs, power, alpha = baseline_cr_percent/100.0, mde_abs_percent/100.0, power_percent_bin/100.0, alpha_percent_bin/100.0
             sample_size, error_msg = calculate_binary_sample_size(baseline_cr, mde_abs, power, alpha, num_variations_ss_bin)
             if error_msg: st.error(error_msg)
@@ -361,15 +360,15 @@ def show_design_test_page():
         st.subheader("Sample Size Calculator (for Continuous Outcomes)")
         st.markdown("**Calculator Inputs:**")
         cols_cont = st.columns(2)
-        with cols_cont[0]: baseline_mean = st.number_input(label="Baseline Mean (Control Group)", value=100.0, step=1.0, format="%.2f", help="Current average value of your metric for the control group.", key="ss_mean_c7_3")
-        with cols_cont[1]: std_dev = st.number_input(label="Standard Deviation (of the metric)", value=20.0, min_value=0.01, step=0.1, format="%.2f", help="Estimated standard deviation of your continuous metric. Get from historical data if possible. Must be > 0.", key="ss_stddev_c7_3") 
-        mde_abs_mean = st.number_input(label="Minimum Detectable Effect (MDE) - Absolute Mean Difference", value=5.0,min_value=0.01, step=0.1, format="%.2f", help="Smallest absolute difference in means you want to detect (e.g., $2 increase). Must be > 0.", key="ss_mde_mean_c7_3")
+        with cols_cont[0]: baseline_mean = st.number_input(label="Baseline Mean (Control Group)", value=100.0, step=1.0, format="%.2f", help="Current average value of your metric for the control group.", key=f"ss_mean{cycle_key_suffix_ds}")
+        with cols_cont[1]: std_dev = st.number_input(label="Standard Deviation (of the metric)", value=20.0, min_value=0.01, step=0.1, format="%.2f", help="Estimated standard deviation of your continuous metric. Get from historical data if possible. Must be > 0.", key=f"ss_stddev{cycle_key_suffix_ds}") 
+        mde_abs_mean = st.number_input(label="Minimum Detectable Effect (MDE) - Absolute Mean Difference", value=5.0,min_value=0.01, step=0.1, format="%.2f", help="Smallest absolute difference in means you want to detect (e.g., $2 increase). Must be > 0.", key=f"ss_mde_mean{cycle_key_suffix_ds}")
         cols2_cont = st.columns(2)
-        with cols2_cont[0]: power_percent_cont = st.slider(label="Statistical Power (1 - \u03B2) (%)", min_value=50, max_value=99, value=80, step=1, format="%d%%", help="Typically 80-90%.", key="ss_power_c7_3")
-        with cols2_cont[1]: alpha_percent_cont = st.slider(label="Significance Level (\u03B1) (%) - Two-sided", min_value=1, max_value=20, value=5, step=1, format="%d%%", help="Typically 1-5%.", key="ss_alpha_c7_3")
-        num_variations_ss_cont = st.number_input(label="Number of Variations (including Control)", min_value=2, value=2, step=1, help="Total versions.", key="ss_num_var_c7_3")
+        with cols2_cont[0]: power_percent_cont = st.slider(label="Statistical Power (1 - \u03B2) (%)", min_value=50, max_value=99, value=80, step=1, format="%d%%", help="Typically 80-90%.", key=f"ss_power_cont{cycle_key_suffix_ds}")
+        with cols2_cont[1]: alpha_percent_cont = st.slider(label="Significance Level (\u03B1) (%) - Two-sided", min_value=1, max_value=20, value=5, step=1, format="%d%%", help="Typically 1-5%.", key=f"ss_alpha_cont{cycle_key_suffix_ds}")
+        num_variations_ss_cont = st.number_input(label="Number of Variations (including Control)", min_value=2, value=2, step=1, help="Total versions.", key=f"ss_num_var_cont{cycle_key_suffix_ds}")
         st.markdown("<p style='font-size: smaller; font-style: italic;'>Note: For continuous, based on pairwise comparisons vs. control at specified α, assuming similar standard deviations across groups.</p>", unsafe_allow_html=True)
-        if st.button("Calculate Sample Size (Continuous)", key="ss_calc_button_c7_3_cont"):
+        if st.button("Calculate Sample Size (Continuous)", key=f"ss_calc_button{cycle_key_suffix_ds}_cont"):
             power, alpha = power_percent_cont/100.0, alpha_percent_cont/100.0
             sample_size, error_msg = calculate_continuous_sample_size(baseline_mean, std_dev, mde_abs_mean, power, alpha, num_variations_ss_cont)
             if error_msg: st.error(error_msg)
@@ -431,8 +430,8 @@ def show_analyze_results_page():
     st.markdown("Upload your A/B test data (as a CSV file) to perform an analysis.")
     st.markdown("---")
 
-    # Use a consistent suffix for session state keys in this cycle
-    cycle_suffix = "_c7_3" 
+    cycle_suffix = "_c8_1" # Cycle 8, Step 1 for Analyze Results page
+    # Initialize session state variables
     if f'analysis_done{cycle_suffix}' not in st.session_state: st.session_state[f'analysis_done{cycle_suffix}'] = False
     if f'df_analysis{cycle_suffix}' not in st.session_state: st.session_state[f'df_analysis{cycle_suffix}'] = None
     if f'metric_type_analysis{cycle_suffix}' not in st.session_state: st.session_state[f'metric_type_analysis{cycle_suffix}'] = 'Binary'
@@ -445,19 +444,23 @@ def show_analyze_results_page():
     if f'bayesian_results_binary{cycle_suffix}' not in st.session_state: st.session_state[f'bayesian_results_binary{cycle_suffix}'] = None
     if f'bayesian_results_continuous{cycle_suffix}' not in st.session_state: st.session_state[f'bayesian_results_continuous{cycle_suffix}'] = None 
     if f'metric_col_name{cycle_suffix}' not in st.session_state: st.session_state[f'metric_col_name{cycle_suffix}'] = None
+    if f'segmentation_cols{cycle_suffix}' not in st.session_state: st.session_state[f'segmentation_cols{cycle_suffix}'] = [] # For segmentation
+    if f'segments_analyzed{cycle_suffix}' not in st.session_state: st.session_state[f'segments_analyzed{cycle_suffix}'] = None # To store identified segments
 
     uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key=f"file_uploader{cycle_suffix}")
 
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
+            # Basic data cleaning: remove leading/trailing whitespace from column names
+            df.columns = df.columns.str.strip()
             st.session_state[f'df_analysis{cycle_suffix}'] = df 
             st.success("File Uploaded Successfully!")
             st.markdown("**Data Preview (first 5 rows):**"); st.dataframe(df.head())
             st.markdown("---")
 
             st.subheader("1. Map Data & Select Metric Type")
-            columns = df.columns.tolist()
+            columns = df.columns.tolist() # Use cleaned column names
             map_col1, map_col2, map_col3 = st.columns(3)
             with map_col1: st.session_state[f'variation_col_analysis{cycle_suffix}'] = st.selectbox("Select 'Variation ID' column:", options=columns, index=0 if columns else -1, key=f"var_col{cycle_suffix}")
             with map_col2: st.session_state[f'outcome_col_analysis{cycle_suffix}'] = st.selectbox("Select 'Outcome' column:", options=columns, index=len(columns)-1 if len(columns)>1 else (0 if columns else -1), key=f"out_col{cycle_suffix}")
@@ -501,19 +504,51 @@ def show_analyze_results_page():
             st.markdown("---"); st.subheader("2. Select Your Control Group & Analysis Alpha")
             var_col_sel = st.session_state[f'variation_col_analysis{cycle_suffix}']
             if var_col_sel and var_col_sel in df.columns and st.session_state[f'df_analysis{cycle_suffix}'] is not None:
-                variation_names = st.session_state[f'df_analysis{cycle_suffix}'][var_col_sel].unique().tolist()
+                variation_names = st.session_state[f'df_analysis{cycle_suffix}'][var_col_sel].astype(str).unique().tolist() # Ensure variation names are strings
                 if variation_names: st.session_state[f'control_group_name_analysis{cycle_suffix}'] = st.selectbox("Select 'Control Group':", options=variation_names, index=0, key=f"ctrl_grp{cycle_suffix}")
                 else: st.warning(f"No unique variations found in column '{var_col_sel}'.")
             elif var_col_sel: st.warning(f"Selected variation column '{var_col_sel}' not found in the uploaded CSV.")
             else: st.warning("Please select a valid variation column.")
             st.session_state[f'alpha_for_analysis{cycle_suffix}'] = st.slider("Significance Level (\u03B1) for Analysis (%)", 1, 20, 5, 1, key=f"alpha_analysis{cycle_suffix}_slider") / 100.0
             
+            # --- NEW: Segmentation UI ---
+            st.markdown("---"); st.subheader("3. Optional: Segmentation Analysis")
+            st.markdown("Select one or more columns to segment your results by. Analysis will be performed for the overall data and then for each segment.")
+            
+            # Ensure variation and outcome columns are not selectable as segment columns
+            # Also, columns with too many unique values might not be ideal for segmentation.
+            potential_segment_cols = [col for col in columns if col not in [st.session_state[f'variation_col_analysis{cycle_suffix}'], st.session_state[f'outcome_col_analysis{cycle_suffix}']] ]
+            
+            # Filter out columns with very high cardinality for segmentation to keep it manageable
+            # Let's say max 20 unique values for a column to be a good segment candidate initially
+            good_segment_cols = []
+            if df is not None:
+                for col in potential_segment_cols:
+                    if df[col].nunique(dropna=True) <= 20: # Only include columns with 20 or fewer unique values
+                        good_segment_cols.append(col)
+                    else:
+                        st.caption(f"Column '{col}' has >20 unique values and is excluded from segmentation options for performance.")
+
+            if not good_segment_cols:
+                st.info("No suitable columns found for segmentation (e.g., columns might have too many unique values, or only variation/outcome columns remain).")
+                st.session_state[f'segmentation_cols{cycle_suffix}'] = [] # Ensure it's empty
+            else:
+                st.session_state[f'segmentation_cols{cycle_suffix}'] = st.multiselect(
+                    "Select segmentation column(s):",
+                    options=good_segment_cols,
+                    default=st.session_state.get(f'segmentation_cols{cycle_suffix}', []), # Persist selection
+                    help="Results will be broken down by unique combinations of values in these columns."
+                )
+            # --- End of Segmentation UI ---
+
+            st.markdown("---") # Separator before Run button
             analysis_button_label = f"🚀 Run Analysis ({st.session_state[f'metric_type_analysis{cycle_suffix}']} Outcome)"
             if st.button(analysis_button_label, key=f"run_analysis_button{cycle_suffix}"):
                 st.session_state[f'analysis_done{cycle_suffix}'] = False
                 st.session_state[f'freq_summary_stats{cycle_suffix}'] = None
                 st.session_state[f'bayesian_results_binary{cycle_suffix}'] = None
                 st.session_state[f'bayesian_results_continuous{cycle_suffix}'] = None
+                st.session_state[f'segments_analyzed{cycle_suffix}'] = None # Reset segments
 
                 valid_setup = True
                 var_col_val = st.session_state[f'variation_col_analysis{cycle_suffix}']
@@ -538,7 +573,35 @@ def show_analyze_results_page():
                 if valid_setup:
                     try:
                         current_df = df_val.copy() 
-                        
+                        selected_segment_cols = st.session_state.get(f'segmentation_cols{cycle_suffix}', [])
+
+                        # --- Segmentation Logic Placeholder ---
+                        if selected_segment_cols:
+                            st.session_state[f'segments_analyzed{cycle_suffix}'] = {} # Initialize dict to store segment info
+                            
+                            # Create a column that represents the unique segment combination
+                            # Ensure all segment columns are treated as strings for grouping to handle mixed types robustly
+                            segment_group_col = '__segment_group__'
+                            current_df[segment_group_col] = current_df[selected_segment_cols].astype(str).agg(' | '.join, axis=1)
+                            
+                            unique_segments = current_df[segment_group_col].unique()
+                            st.info(f"Segmentation enabled. Found {len(unique_segments)} unique segment(s) based on column(s): {', '.join(selected_segment_cols)}. Full segmented analysis will be implemented in the next step.")
+                            
+                            # For now, just list segments. In future, loop through these.
+                            # For each segment_value in unique_segments:
+                            #     segment_df = current_df[current_df[segment_group_col] == segment_value]
+                            #     # ... then run analysis on segment_df ...
+                            #     st.session_state[f'segments_analyzed{cycle_suffix}'][segment_value] = "Analysis pending"
+                            
+                            # For this step, we'll just show the overall analysis and the identified segments
+                            st.write("Identified Segments (Overall analysis shown below for now):")
+                            for seg_val in unique_segments:
+                                st.write(f"- Segment: {seg_val}")
+                            st.markdown("---") # Separator before overall results
+                        else:
+                             st.session_state[f'segments_analyzed{cycle_suffix}'] = None # No segmentation
+
+                        # --- Overall Analysis (as before) ---
                         if st.session_state[f'metric_type_analysis{cycle_suffix}'] == 'Binary':
                             success_val_bin = st.session_state[f'success_value_analysis{cycle_suffix}']
                             if pd.isna(success_val_bin): 
@@ -550,7 +613,7 @@ def show_analyze_results_page():
                                 Users=('__outcome_processed__', 'count'), 
                                 Converts=('__outcome_processed__', 'sum')
                             ).reset_index()
-                            summary_stats.rename(columns={var_col_val: 'Variation', 'Converts': 'Conversions'}, inplace=True)
+                            summary_stats.rename(columns={var_col_val: 'Variation'}, inplace=True)
                             if summary_stats['Users'].sum() == 0: st.error("No users found after grouping for binary analysis."); st.stop()
                             summary_stats['Metric Value (%)'] = (summary_stats['Conversions'] / summary_stats['Users'].replace(0, np.nan) * 100).round(2)
                             st.session_state[f'metric_col_name{cycle_suffix}'] = 'Metric Value (%)'
@@ -602,7 +665,10 @@ def show_analyze_results_page():
         except Exception as e: st.error(f"Error reading/processing CSV: {e}"); st.exception(e)
     else: st.info("Upload a CSV file to begin analysis.")
 
+    # --- Display Results (Overall for now) ---
     if st.session_state[f'analysis_done{cycle_suffix}']:
+        # ... (The rest of the result display logic remains largely the same as V0.7.2)
+        # It will display the overall results. Segmented display will be added later.
         alpha_display = st.session_state[f'alpha_for_analysis{cycle_suffix}']
         metric_type_display = st.session_state[f'metric_type_analysis{cycle_suffix}']
         summary_stats_display = st.session_state[f'freq_summary_stats{cycle_suffix}']
@@ -612,7 +678,8 @@ def show_analyze_results_page():
         variation_col_display = st.session_state[f'variation_col_analysis{cycle_suffix}']
         df_display = st.session_state[f'df_analysis{cycle_suffix}']
 
-        st.markdown("---"); st.subheader(f"Frequentist Analysis Results ({metric_type_display} Outcome)")
+
+        st.markdown("---"); st.subheader(f"Overall Frequentist Analysis Results ({metric_type_display} Outcome)") # Clarify these are overall
         if summary_stats_display is not None and metric_col_name_display is not None:
             st.markdown("##### 📊 Descriptive Statistics")
             if metric_type_display == 'Binary': 
@@ -700,7 +767,7 @@ def show_analyze_results_page():
                                     s1_sq, s2_sq = var_var_raw, control_var_raw
                                     
                                     if N1 > 0 and N2 > 0 and pd.notna(s1_sq) and pd.notna(s2_sq) and pd.notna(abs_diff_means):
-                                        pooled_se_diff_sq = (s1_sq / N1) + (s2_sq / N2) if N1 > 0 and N2 > 0 else 0 # ensure N1, N2 > 0 for division
+                                        pooled_se_diff_sq = (s1_sq / N1) + (s2_sq / N2) if N1 > 0 and N2 > 0 else 0 
                                         if pooled_se_diff_sq > 0 : 
                                             pooled_se_diff = math.sqrt(pooled_se_diff_sq)
                                             df_t_approx = min(N1 - 1, N2 - 1)
@@ -759,7 +826,7 @@ def show_analyze_results_page():
                 except Exception as e_plot: st.warning(f"Could not generate box plots: {e_plot}")
         
         if metric_type_display == 'Binary':
-            st.markdown("---"); st.subheader("Bayesian Analysis Results (Binary Outcome)")
+            st.markdown("---"); st.subheader(f"Overall Bayesian Analysis Results (Binary Outcome)") # Clarify these are overall
             bayesian_results_to_display = st.session_state[f'bayesian_results_binary{cycle_suffix}']
             if bayesian_results_to_display and summary_stats_display is not None and metric_col_name_display is not None:
                 st.markdown(f"Using a Beta(1,1) uninformative prior. Credible Intervals (CrI) at {100*(1-alpha_display):.0f}% level.")
@@ -831,7 +898,7 @@ def show_analyze_results_page():
             else: st.info("Bayesian analysis results for binary outcomes are not available or could not be computed.")
 
         elif metric_type_display == 'Continuous':
-            st.markdown("---"); st.subheader("Bayesian Analysis Results (Continuous Outcome)")
+            st.markdown("---"); st.subheader(f"Overall Bayesian Analysis Results (Continuous Outcome)") # Clarify these are overall
             bayesian_results_to_display_cont = st.session_state[f'bayesian_results_continuous{cycle_suffix}']
             if bayesian_results_to_display_cont and summary_stats_display is not None:
                 st.markdown(f"Using a t-distribution approximation for posteriors. Credible Intervals (CrI) at {100*(1-alpha_display):.0f}% level.")
@@ -868,20 +935,18 @@ def show_analyze_results_page():
                     bayesian_df_cont = pd.DataFrame(bayesian_data_disp_cont)
                     st.markdown(bayesian_df_cont.to_html(escape=False, index=False), unsafe_allow_html=True) 
 
-                    # NEW: Dynamic interpretation captions for Bayesian Continuous
                     st.markdown("##### Key Bayesian Insights (Continuous):")
                     for item in bayesian_data_disp_cont:
                         var_name_bayes = item["Variation"]
-                        if var_name_bayes == control_name_display: continue # Skip control
+                        if var_name_bayes == control_name_display: continue 
 
-                        prob_better_val_str = item["P(Better > Control) (%)"] # This is HTML string
-                        # Extract numeric probability for logic
+                        prob_better_val_str = item["P(Better > Control) (%)"] 
                         prob_better_numeric = np.nan
                         if "N/A" not in prob_better_val_str:
                             try: prob_better_numeric = float(prob_better_val_str.split('>')[1].split('%')[0]) / 100
-                            except: pass # Keep as nan if parsing fails
+                            except: pass 
 
-                        cri_diff_str = item[f"{100*(1-alpha_display):.0f}% CrI for Diff. (abs)"] # HTML string
+                        cri_diff_str = item[f"{100*(1-alpha_display):.0f}% CrI for Diff. (abs)"] 
                         cri_diff_contains_zero = "N/A" not in cri_diff_str and "[" in cri_diff_str and "]" in cri_diff_str and \
                                                  float(cri_diff_str.split('[')[1].split(',')[0]) < 0 < float(cri_diff_str.split(',')[1].split(']')[0])
                         
@@ -893,7 +958,7 @@ def show_analyze_results_page():
                         
                         if pd.notna(prob_better_numeric):
                             insight = f"For **{var_name_bayes}** vs Control:"
-                            if prob_better_numeric > (1 - alpha_display): # Using alpha as a high threshold for "strong evidence"
+                            if prob_better_numeric > (1 - alpha_display): 
                                 insight += f" Strong evidence it's better (P(Better) = {prob_better_numeric*100:.1f}%)."
                             elif prob_better_numeric > 0.5:
                                 insight += f" More likely better than not (P(Better) = {prob_better_numeric*100:.1f}%)."
@@ -903,7 +968,7 @@ def show_analyze_results_page():
                             if pd.notna(expected_diff_numeric):
                                 insight += f" Expected difference is {expected_diff_numeric:.3f}."
                             if "N/A" not in cri_diff_str:
-                                insight += f" The {100*(1-alpha_display):.0f}% CrI for difference is {cri_diff_str.replace('<span>','').replace('</span>','')}"
+                                insight += f" The {100*(1-alpha_display):.0f}% CrI for difference is {cri_diff_str.replace('<span>','').replace('</span>','')}" # Remove span for caption
                                 if cri_diff_contains_zero:
                                     insight += ", which includes zero (suggesting the difference may not be practically significant or could be due to chance)."
                                 else:
@@ -912,7 +977,6 @@ def show_analyze_results_page():
                 
                 st.markdown("##### Posterior Distributions for Means (Continuous)")
                 fig_mean_cont, ax_mean_cont = plt.subplots()
-                # ... (Plotting logic for means - largely unchanged, ensure keys are correct) ...
                 max_density_mean_cont = 0
                 all_mean_samples_for_plot = []
                 for var_name_plot in ordered_vars_for_bayes_display_cont:
@@ -949,7 +1013,6 @@ def show_analyze_results_page():
                     st.caption("Not enough valid sample data to plot posterior distributions of means.")
 
                 st.markdown("##### Posterior Distribution of Difference (Variation Mean - Control Mean)")
-                # ... (Plotting logic for differences - largely unchanged, ensure keys are correct) ...
                 num_vars_to_plot_cont_diff = sum(1 for var_name_diff in bayesian_results_to_display_cont if var_name_diff != control_name_display and bayesian_results_to_display_cont[var_name_diff].get('diff_samples_vs_control') is not None and not np.all(np.isnan(bayesian_results_to_display_cont[var_name_diff].get('diff_samples_vs_control'))))
                 if num_vars_to_plot_cont_diff > 0:
                     cols_diff_plots_cont = st.columns(min(num_vars_to_plot_cont_diff, 2)) 
@@ -1043,7 +1106,7 @@ def show_bayesian_guidelines_page():
     st.markdown("""
     * **Prior Distribution:** Represents your beliefs about a parameter *before* seeing the test data.
         * For **binary outcomes (Conversion Rates)**, this app uses a `Beta(1,1)` prior by default. This is an "uninformative" or "flat" prior, meaning it assumes all conversion rates between 0% and 100% are equally likely before the test. This is a common starting point when strong prior information is unavailable.
-        * For **continuous outcomes (Means)**, the app uses a method that approximates the posterior distribution of the mean using a t-distribution. This approach arises when the true variance of the data is unknown and is estimated from the sample. It implicitly uses non-informative (or "vague") priors for the underlying true mean and variance. This is a standard approach in Bayesian analysis for means when prior information is limited. More advanced Bayesian models for continuous data might involve explicitly setting more informative priors (e.g., Normal prior for the mean, Inverse-Gamma prior for the variance).
+        * For **continuous outcomes (Means)**, the app uses a method that approximates the posterior distribution of the mean using a t-distribution derived from your sample data (sample mean, sample standard deviation, sample size). This approach implicitly uses non-informative (or "vague") priors for the underlying true mean and variance, which is a common simplification. More advanced Bayesian models for continuous data might involve explicitly setting more informative priors (e.g., Normal prior for the mean, Inverse-Gamma prior for the variance).
     * **Likelihood:** This is how your collected A/B test data informs the model about the parameters.
         * For binary data (conversions/non-conversions), the likelihood is typically Binomial.
         * For continuous data (assuming the data points are approximately normally distributed within each group), the likelihood is Normal.
@@ -1071,17 +1134,17 @@ def show_bayesian_guidelines_page():
 
     st.markdown("**For Continuous Outcomes (e.g., Average Order Value, Time on Page):**")
     st.markdown("""
-    * **Posterior Distribution Plot (Means):** Visualizes the plausible values for the true mean of the metric for each variation, based on the t-distribution approximation of the posterior. Wider distributions indicate more uncertainty about the true mean.
+    * **Posterior Distribution Plot (Means):** Visualizes the plausible values for the true mean of the metric for each variation, based on the t-distribution approximation of the posterior. Similar to binary, wider distributions indicate more uncertainty about the true mean.
     * **Posterior Mean & Credible Interval (CrI) for Mean:**
-        * *Posterior Mean:* The average value of the metric for a variation, based on its posterior distribution. With the uninformative prior approach used, this will be very close to the sample mean.
-        * *CrI for Mean:* We are X% confident that the true mean for this variation lies within this interval. For example, a 95% CrI of [$10.50, $12.30] for Average Order Value (AOV) means there's a 95% probability the true AOV for that variation is between $10.50 and $12.30.
+        * *Posterior Mean:* The average value of the metric for a variation, based on its posterior distribution (will be very close to the sample mean given the uninformative prior approach).
+        * *CrI for Mean:* We are X% confident that the true mean for this variation lies within this interval. For example, a 95% CrI of [\$10.50, \$12.30] for Average Order Value (AOV) means there's a 95% probability the true AOV for that variation is between \$10.50 and \$12.30.
     * **P(Variation > Control) (Probability of Being Better):** The probability that the variation's true underlying mean is strictly greater than the control's true mean. A high value suggests the variation is likely better.
         * *Example:* If P(Var_B_Mean > Control_Mean) = 97%, there's a 97% chance that Variation B truly has a higher average outcome than Control. This is a direct probabilistic statement about the hypothesis.
     * **Expected Difference (Absolute):** The average absolute difference (Variation Mean - Control Mean) you might expect, based on the posterior distribution of the difference. This is the mean of the difference samples.
-        * *Example:* If the Expected Difference for Variation B vs Control is +$1.50 for AOV, you expect, on average, Variation B to result in an AOV that is $1.50 higher than Control.
+        * *Example:* If the Expected Difference for Variation B vs Control is +\$1.50 for AOV, you expect, on average, Variation B to result in an AOV that is \$1.50 higher than Control.
     * **Credible Interval (CrI) for Difference (Absolute):** We are X% confident that the true absolute difference in means lies within this interval. This is crucial for understanding the magnitude and uncertainty of the difference.
-        * *Example 1 (Uncertain but likely positive):* A 95% CrI for Difference of [-$0.50, +$3.50] for AOV, with an Expected Difference of +$1.50. While the expected difference is positive and P(Better) might be high, the interval includes $0. This means it's plausible there's no real difference, or even a slight negative effect. The decision to launch might depend on the cost/risk.
-        * *Example 2 (Strongly positive):* A 95% CrI for Difference of [+$0.50, +$2.50]. Here, the entire interval is above zero, providing strong evidence that the variation has a positive impact, with the true effect likely between $0.50 and $2.50.
+        * *Example 1 (Uncertain but likely positive):* A 95% CrI for Difference of [-\$0.50, +\$3.50] for AOV, with an Expected Difference of +\$1.50. While the expected difference is positive and P(Better) might be high, the interval includes \$0. This means it's plausible there's no real difference, or even a slight negative effect. The decision to launch might depend on the cost/risk.
+        * *Example 2 (Strongly positive):* A 95% CrI for Difference of [+\$0.50, +\$2.50]. Here, the entire interval is above zero, providing strong evidence that the variation has a positive impact, with the true effect likely between \$0.50 and \$2.50.
     * **P(Being Best):** The probability that a specific variation has the highest true mean among all tested variations. Useful for ranking, but always consider the CrIs for differences to ensure the "best" is meaningfully better than others, especially the control.
     """)
     
@@ -1127,4 +1190,4 @@ else:
 
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.7.2 (Cycle 7 - Bayesian Continuous Part 3)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.8.0 (Cycle 8 - Segmentation UI)")
