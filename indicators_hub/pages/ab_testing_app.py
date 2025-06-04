@@ -550,7 +550,6 @@ def display_frequentist_analysis(df_for_analysis, metric_type, outcome_col, vari
     
     elif metric_type == 'Continuous':
         control_mean = control_data['Mean_Value']
-        # Use df_cleaned which was prepared at the start of this function for continuous
         control_group_data_raw = df_cleaned[df_cleaned[variation_col] == control_name][outcome_col].dropna() 
         control_users_raw = len(control_group_data_raw)
 
@@ -651,7 +650,8 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
     st.markdown(f"Using a Beta(1,1) uninformative prior. Credible Intervals (CrI) at {100*(1-alpha):.0f}% level.")
     
     bayesian_data_disp_bin = []
-    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None and 'Variation' in summary_stats_for_ordering else list(bayesian_results.keys())
+    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None and 'Variation' in summary_stats_for_ordering.columns else list(bayesian_results.keys())
+
 
     for var_name in ordered_vars_for_display:
         if var_name not in bayesian_results: continue 
@@ -676,6 +676,7 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
     if bayesian_data_disp_bin:
         bayesian_df_bin = pd.DataFrame(bayesian_data_disp_bin); st.markdown(bayesian_df_bin.to_html(escape=False, index=False), unsafe_allow_html=True)
     
+    # Ensure summary_stats_for_ordering is not None and has the metric column before plotting
     if summary_stats_for_ordering is not None and 'Metric Value (%)' in summary_stats_for_ordering.columns:
         st.markdown("##### Posterior Distributions for Conversion Rates (Binary)"); fig_cr_bin, ax_cr_bin = plt.subplots()
         observed_max_cr_for_plot = 0.0
@@ -735,7 +736,8 @@ def display_bayesian_continuous_results(bayesian_results, summary_stats_for_orde
     st.markdown(f"Using a t-distribution approximation for posteriors. Credible Intervals (CrI) at {100*(1-alpha):.0f}% level.")
     
     bayesian_data_disp_cont = []
-    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None and 'Variation' in summary_stats_for_ordering else list(bayesian_results.keys())
+    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None and 'Variation' in summary_stats_for_ordering.columns else list(bayesian_results.keys())
+
 
     for var_name in ordered_vars_for_display:
         if var_name not in bayesian_results: continue
@@ -804,7 +806,6 @@ def display_bayesian_continuous_results(bayesian_results, summary_stats_for_orde
                         insight += "."
                 st.caption(insight)
     
-    # Ensure summary_stats_for_ordering is not None and has the metric column before plotting
     if summary_stats_for_ordering is not None and 'Mean_Value' in summary_stats_for_ordering.columns: 
         st.markdown("##### Posterior Distributions for Means (Continuous)")
         fig_mean_cont, ax_mean_cont = plt.subplots()
@@ -1032,7 +1033,7 @@ def show_analyze_results_page():
                             overall_summary_stats_calc.rename(columns={var_col_val: 'Variation'}, inplace=True)
                             if not overall_summary_stats_calc.empty and overall_summary_stats_calc['Users'].sum() > 0:
                                 overall_summary_stats_calc['Metric Value (%)'] = (overall_summary_stats_calc['Conversions'] / overall_summary_stats_calc['Users'].replace(0, np.nan) * 100).round(2)
-                            else: overall_summary_stats_calc = None # No valid users
+                            else: overall_summary_stats_calc = None 
                         
                         elif metric_type == 'Continuous':
                             overall_df_for_analysis[out_col_val] = pd.to_numeric(overall_df_for_analysis[out_col_val], errors='coerce')
@@ -1138,9 +1139,8 @@ def show_analyze_results_page():
                 if pd.isna(success_val): overall_df_for_freq_display['__outcome_processed__'] = overall_df_for_freq_display[outcome_col_display].isna().astype(int)
                 else: overall_df_for_freq_display['__outcome_processed__'] = (overall_df_for_freq_display[outcome_col_display] == success_val).astype(int)
         
-        # This call is primarily for display; the summary for Bayesian was already calculated and stored.
-        # The returned summary_stats from this call is for the overall data and can be used for Bayesian display ordering.
-        overall_summary_stats_for_display = display_frequentist_analysis(
+        # Call display_frequentist_analysis for its display side effects; actual summary for Bayes is already in session_state
+        display_frequentist_analysis(
             overall_df_for_freq_display, 
             metric_type_display, 
             outcome_col_display, 
@@ -1151,13 +1151,15 @@ def show_analyze_results_page():
         )
 
         # --- Display Overall Bayesian Results ---
-        # Use the overall_summary_stats_for_display if it's valid, otherwise, the display functions will handle None.
+        # Use the overall_freq_summary_stats from session state for ordering and ensuring plots have necessary columns
+        overall_summary_stats_for_bayes_display = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}') 
+        
         if metric_type_display == 'Binary':
             bayesian_results_to_display = st.session_state.get(f'overall_bayesian_results_binary{cycle_suffix}')
-            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_display, control_name_display, alpha_display, section_title_prefix="Overall")
+            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, section_title_prefix="Overall")
         elif metric_type_display == 'Continuous':
             bayesian_results_to_display_cont = st.session_state.get(f'overall_bayesian_results_continuous{cycle_suffix}')
-            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
+            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
 
         # --- Display Segmented Analysis ---
         segmented_freq_data = st.session_state.get(f'segmented_freq_results{cycle_suffix}', {})
@@ -1182,6 +1184,8 @@ def show_analyze_results_page():
                     elif metric_type_display == 'Continuous': 
                         segment_df_for_display[outcome_col_display] = pd.to_numeric(segment_df_for_display[outcome_col_display], errors='coerce')
 
+                    # This call to display_frequentist_analysis is for display purposes within the segment expander.
+                    # The summary_stats it returns is what we'll use for the Bayesian display for this segment.
                     segment_summary_stats_for_segment_display = display_frequentist_analysis(
                         segment_df_for_display, 
                         metric_type_display, 
@@ -1193,14 +1197,13 @@ def show_analyze_results_page():
                     )
                     
                     segment_bayes_result_data = segmented_bayes_data.get(segment_name)
-                    # Use the summary_stats that was calculated and stored during the main "Run Analysis" block for this segment
-                    segment_summary_for_bayes_ordering_from_run = segment_info.get('summary_stats') 
-
-                    if segment_bayes_result_data is not None and segment_summary_for_bayes_ordering_from_run is not None:
+                    
+                    # Use the summary_stats returned by display_frequentist_analysis for this segment for Bayesian display
+                    if segment_bayes_result_data is not None and segment_summary_stats_for_segment_display is not None:
                         if metric_type_display == 'Binary':
-                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
+                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_stats_for_segment_display, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
                         elif metric_type_display == 'Continuous':
-                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
+                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_stats_for_segment_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
                     elif segment_summary_stats_for_segment_display is None or segment_summary_stats_for_segment_display.empty:
                          st.warning(f"Bayesian analysis for segment '{segment_name}' skipped due to lack of valid summary statistics from Frequentist step.")
                     else:
@@ -1215,6 +1218,7 @@ def show_interpret_results_page():
     st.header("Interpreting Results & Detailed Decision Guidance 🧐")
     st.markdown("""
     Once your A/B test is complete and you've analyzed the data, the next crucial step is interpretation. This involves looking beyond just a single number (like a p-value or a lift percentage) and considering the broader context to make an informed decision.
+    This page aims to guide you through that process.
     """)
     st.markdown("---")
 
@@ -1229,58 +1233,124 @@ def show_interpret_results_page():
         * Does the change lead to an improvement that justifies the cost of implementation, potential risks, or engineering effort?
         * Your **Minimum Detectable Effect (MDE)**, defined during test design, is a key benchmark for practical significance. If the observed effect (and its confidence/credible interval) is smaller than your MDE, it might not be practically significant even if it's statistically significant.
     * **The Four Scenarios:**
-        1.  **Statistically Significant & Practically Significant:** Ideal outcome! You have evidence the effect is real and large enough to matter.
-        2.  **Statistically Significant & Not Practically Significant:** The effect is likely real, but too small to be worth implementing. Consider if there are any sub-segments where the effect is larger.
-        3.  **Not Statistically Significant & Practically Significant (Potentially):** The observed difference is large enough that it *would* be valuable if real, but your test lacked the power to confirm it statistically. This might warrant further testing with a larger sample if the potential gain is high.
-        4.  **Not Statistically Significant & Not Practically Significant:** No strong evidence of a real effect, and even if there were one, it's likely too small to matter.
+        1.  **Statistically Significant & Practically Significant:** Ideal outcome! You have evidence the effect is real and large enough to matter. This is usually a strong candidate for launch.
+        2.  **Statistically Significant & Not Practically Significant:** The effect is likely real, but too small to be worth implementing based on your MDE. Consider if the cost of implementation is negligible or if there are other non-quantifiable benefits.
+        3.  **Not Statistically Significant & Practically Significant (Potentially):** The observed difference is large enough that it *would* be valuable if real, but your test lacked the power to confirm it statistically. This might warrant further testing with a larger sample if the potential gain is high and the cost of further testing is acceptable.
+        4.  **Not Statistically Significant & Not Practically Significant:** No strong evidence of a real effect, and even if there were one, it's likely too small to matter. Usually, this means sticking with the control.
     * **Example:** A 0.01% increase in conversion rate might be statistically significant with millions of users, but it's unlikely to be practically significant for most businesses. Conversely, a 5% increase might be practically significant, but if your sample size was too small, it might not achieve statistical significance.
     """)
     st.markdown("---")
 
     st.subheader("2. The Role of Effect Size")
     st.markdown("""
-    * **What is it?** Effect size is a quantitative measure of the magnitude of an experimental effect. Unlike significance tests, it's not affected by sample size.
+    * **What is it?** Effect size is a quantitative measure of the magnitude of an experimental effect. Unlike significance tests (p-values), it's not directly affected by sample size in the same way.
     * **Why is it important?**
         * It helps you understand the *strength* of the relationship or the *magnitude* of the difference between groups.
-        * It provides a more complete picture when combined with p-values.
+        * It provides a more complete picture when combined with p-values. A small p-value tells you an effect is likely real; the effect size tells you how big that effect is.
         * It allows for comparison of results across different studies or tests (meta-analysis).
-        * It's crucial for determining practical significance.
-    * **Common Measures (Examples - this app doesn't calculate these directly yet):**
+        * It's crucial for determining practical significance – is the effect large enough to care about?
+    * **Common Measures (Examples - this app provides some of these directly in the results tables):**
         * **For Binary Outcomes (Proportions):**
-            * *Risk Difference (Absolute Uplift):* `CR_variation - CR_control`. Directly interpretable.
-            * *Relative Risk (Relative Uplift):* `CR_variation / CR_control`.
-            * *Odds Ratio:* `(Conversions_V / NonConversions_V) / (Conversions_C / NonConversions_C)`.
+            * *Risk Difference (Absolute Uplift/Difference):* `CR_variation - CR_control`. Directly interpretable (e.g., a 2 percentage point increase).
+            * *Relative Risk (Relative Uplift/Difference):* `CR_variation / CR_control`. Often expressed as a percentage change.
+            * *Odds Ratio:* `(Conversions_V / NonConversions_V) / (Conversions_C / NonConversions_C)`. Less intuitive for direct business interpretation but common in some statistical fields.
         * **For Continuous Outcomes (Means):**
-            * *Difference in Means (Absolute Difference):* `Mean_variation - Mean_control`.
-            * *Cohen's d:* A standardized mean difference, `(Mean_variation - Mean_control) / Pooled_StdDev`. Provides a scale-independent measure (e.g., small ≈ 0.2, medium ≈ 0.5, large ≈ 0.8).
-    * **Interpretation:** Always consider the effect size in the context of your specific domain and goals. What constitutes a "small" or "large" effect can vary.
+            * *Difference in Means (Absolute Difference):* `Mean_variation - Mean_control`. Directly interpretable in the units of your metric (e.g., \$2.50 increase in AOV).
+            * *Cohen's d:* A standardized mean difference, `(Mean_variation - Mean_control) / Pooled_StdDev`. Provides a scale-independent measure (e.g., small ≈ 0.2, medium ≈ 0.5, large ≈ 0.8). This app does not calculate Cohen's d directly, but the absolute difference is provided.
+    * **Interpretation:** Always consider the effect size in the context of your specific domain and goals. What constitutes a "small" or "large" effect can vary greatly. An "Expected Uplift" or "Expected Difference" from the Bayesian analysis is also a form of effect size (the mean of the posterior distribution of the difference).
     """)
     st.markdown("---")
 
     st.subheader("3. Leveraging Confidence and Credible Intervals")
     st.markdown("""
-    Both Frequentist Confidence Intervals (CIs) and Bayesian Credible Intervals (CrIs) provide a range of plausible values for the true effect (e.g., the true difference in conversion rates or means).
-    * **Range of Plausible Values:** They quantify the uncertainty around your point estimate (e.g., the observed lift).
-        * A **Frequentist CI** (e.g., 95% CI): If you were to repeat the experiment many times, 95% of the CIs constructed would contain the true population parameter.
-        * A **Bayesian CrI** (e.g., 95% CrI): There is a 95% probability that the true population parameter lies within this interval, given your data and prior.
-    * **Checking for "No Effect":**
+    Both Frequentist Confidence Intervals (CIs) and Bayesian Credible Intervals (CrIs) provide a range of plausible values for the true effect (e.g., the true difference in conversion rates or means between a variation and the control).
+    * **Range of Plausible Values:** They quantify the uncertainty around your point estimate (e.g., the observed lift or difference).
+        * A **Frequentist 95% CI** means that if you were to repeat the experiment many times, 95% of the CIs constructed in that manner would contain the true population parameter. It's a statement about the interval construction process.
+        * A **Bayesian 95% CrI** means there is a 95% probability that the true population parameter lies within this interval, given your data and the chosen prior. This is often more intuitive.
+    * **Checking for "No Effect" (Zero):**
         * If a CI/CrI for the *difference* between a variation and control **includes zero**, it means that "no difference" is a plausible value.
             * For Frequentist CIs, this often aligns with a non-significant p-value (p > alpha).
-            * For Bayesian CrIs, it means there's a non-negligible probability that the true difference is zero or even in the opposite direction.
+            * For Bayesian CrIs, it means there's a non-negligible probability that the true difference is zero or even in the opposite direction of your point estimate.
     * **Assessing Practical Significance:**
         * Compare the entire interval (especially the lower bound for an improvement, or upper bound for a cost/decrease) against your pre-defined **Minimum Detectable Effect (MDE)** or any other threshold of practical importance.
-        * If the *entire* CI/CrI is above your MDE for a positive metric (or below for a negative metric like cost), you have stronger evidence of a practically significant result.
-        * If the interval overlaps with your MDE, the result is more ambiguous regarding practical significance.
+        * If the *entire* CI/CrI is above your MDE for a positive metric (e.g., the lower bound of the CI/CrI for uplift is greater than MDE), you have stronger evidence of a practically significant result.
+        * If the interval overlaps with your MDE, the result is more ambiguous regarding practical significance. The true effect could be smaller or larger than your MDE.
+        * If the interval is mostly below your MDE (even if it's all positive), the effect might be real but not practically significant.
     * **Width of the Interval:**
-        * A **narrow** interval suggests a more precise estimate of the true effect.
-        * A **wide** interval indicates more uncertainty. This can happen with smaller sample sizes or high variability in the data. Even if the point estimate looks good, a wide interval should temper your confidence.
-    * **Example:**
-        * Variation B shows a 2% lift with a 95% CI for the difference of [0.5%, 3.5%]. This is statistically significant (doesn't include 0) and, if your MDE was 1%, it's also practically significant as the entire range is above MDE.
-        * Variation C shows a 1% lift with a 95% CI of [-1.0%, 3.0%]. This is not statistically significant (includes 0).
-        * Variation D shows a 0.2% lift with a 95% CI of [0.1%, 0.3%]. Statistically significant, but if your MDE is 1%, it's not practically significant.
+        * A **narrow** interval suggests a more precise estimate of the true effect. This typically comes from larger sample sizes or lower data variability.
+        * A **wide** interval indicates more uncertainty. Even if the point estimate (e.g., mean uplift) looks good, a wide interval should temper your confidence and suggests the true effect could be quite different.
+    * **Example (using CI for difference in CR % points):**
+        * Variation B shows a 2% lift. 95% CI: \[0.5%, 3.5%\]. MDE is 1%.
+            * *Interpretation:* Statistically significant (CI doesn't include 0). Practically significant (entire CI is above the 1% MDE, or at least the lower bound is close enough to be considered). High confidence in a meaningful positive effect.
+        * Variation C shows a 1% lift. 95% CI: \[-1.0%, 3.0%\]. MDE is 1%.
+            * *Interpretation:* Not statistically significant (CI includes 0). Practical significance is uncertain; the true effect could range from a decrease to a notable increase.
+        * Variation D shows a 0.2% lift. 95% CI: \[0.1%, 0.3%\]. MDE is 1%.
+            * *Interpretation:* Statistically significant (CI doesn't include 0). However, not practically significant as the entire CI is well below the 1% MDE. The effect is likely real but too small to matter.
     """)
     st.markdown("---")
-    st.info("More content coming soon, including: Integrating Bayesian Probabilities (P(Better), P(Best)), Decision Frameworks (e.g., Risk vs. Reward), and Post-Test Actions (Launch, Iterate, Discard, Learn).")
+
+    st.subheader("4. Integrating Bayesian Probabilities")
+    st.markdown("""
+    Bayesian analysis provides direct probabilities that can be very intuitive for decision-making:
+    * **P(Variation > Control) (Probability of Being Better):**
+        * This tells you the likelihood that the variation is truly outperforming the control, given the data.
+        * A high value (e.g., >90% or >95%, depending on your risk tolerance) gives you confidence in the direction of the effect.
+        * **Combine with Magnitude:** Always look at this alongside the **Expected Uplift/Difference** and its **Credible Interval**. A 99% P(Better) is less exciting if the CrI for uplift is \[0.01%, 0.02%\] than if it's \[2%, 5%\].
+    * **P(Being Best) (Probability of Being the Best Variation):**
+        * In tests with multiple variations (A/B/n), this helps identify the overall winner.
+        * The variation with the highest P(Being Best) is the most likely candidate to have the highest true performance.
+        * Again, consider this alongside the **magnitude of differences** between the top contenders. If Var C has P(Best) = 60% and Var D has P(Best) = 35%, but their expected performances and CrIs are very similar, the choice might not be clear-cut based on this probability alone.
+    * **Using these probabilities:**
+        * Set decision thresholds: e.g., "We will consider launching if P(Better > Control) is > 95% AND the lower bound of the CrI for uplift is above our MDE."
+        * Risk assessment: If P(Better > Control) is 80%, it means there's a 20% chance the variation is actually the same or worse. Is this an acceptable risk?
+    """)
+    st.markdown("---")
+
+    st.subheader("5. Decision-Making Frameworks & Business Context")
+    st.markdown("""
+    Statistical results are just one piece of the puzzle. Always integrate them with your business context:
+    * **Cost vs. Benefit:**
+        * What is the cost of implementing the change (development time, resources, potential disruption)?
+        * What is the potential benefit if the variation is successful (increased revenue, engagement, efficiency)?
+        * Is the expected uplift (considering its uncertainty via the CrI) large enough to justify the costs?
+    * **Risk Tolerance:**
+        * How much risk is the business willing to take?
+        * If a variation has a 70% chance of being better but a 30% chance of being slightly worse, is that acceptable? This depends on the potential downside.
+        * Consider the "Expected Loss" (an advanced Bayesian concept not yet in this app) if you were to make the wrong decision.
+    * **Strategic Alignment:**
+        * Does the change align with overall business strategy and goals?
+        * Even a winning test might not be implemented if it conflicts with long-term vision or brand identity.
+    * **User Experience:**
+        * Beyond the primary metric, does the change negatively impact other aspects of user experience? (e.g., increased clicks but also increased frustration).
+    * **Segmentation Insights:**
+        * Did the change perform differently for various user segments? A variation might be a loser overall but a big winner for a key demographic, potentially leading to a targeted rollout.
+    """)
+    st.markdown("---")
+
+    st.subheader("6. Common Post-Test Actions")
+    st.markdown("""
+    Based on your interpretation, common actions include:
+    * ✅ **Launch the Winning Variation:**
+        * Strong evidence (statistical and practical significance, favorable Bayesian probabilities, positive CrI).
+        * Benefits outweigh costs and risks.
+        * Monitor post-launch performance closely.
+    * 🔄 **Iterate on the Variation:**
+        * The test showed promise but wasn't a clear winner (e.g., statistically significant but small effect, or P(Better) is moderate but CrI includes zero).
+        * Learnings from the test suggest how the variation could be improved.
+        * Formulate a new hypothesis and design a new test.
+    * 🗑️ **Discard the Variation (Stick with Control):**
+        * No evidence of improvement, or evidence of negative impact.
+        * Statistically significant but not practically significant, and implementation costs are non-trivial.
+    * 📚 **Learn and Re-evaluate Hypothesis:**
+        * Even "failed" tests provide learnings. Why didn't the hypothesis hold true?
+        * Analyze segments to understand if the effect varied.
+        * Use the insights to form new, more informed hypotheses for future tests.
+    * 🧪 **Conduct Further Testing:**
+        * Results are inconclusive but suggest a potentially valuable effect (e.g., not statistically significant but observed effect is large and MDE was ambitious).
+        * Consider if a larger sample size is feasible to gain more precision.
+    """)
+    st.markdown("---")
+    st.info("This page will continue to be expanded with more detailed frameworks, checklists for decision-making, and examples.")
 
 
 def show_faq_page():
