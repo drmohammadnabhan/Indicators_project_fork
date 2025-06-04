@@ -298,7 +298,7 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
 # --- Page Functions ---
 def show_introduction_page():
     # Displays the introduction to A/B testing.
-    st.header("Introduction to A/B Testing 🧪")
+    st.header("Introduction to A/B Testing �")
     st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
     st.subheader("What is A/B Testing?") 
@@ -676,7 +676,6 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
     if bayesian_data_disp_bin:
         bayesian_df_bin = pd.DataFrame(bayesian_data_disp_bin); st.markdown(bayesian_df_bin.to_html(escape=False, index=False), unsafe_allow_html=True)
     
-    # Ensure summary_stats_for_ordering is not None and has the metric column before plotting
     if summary_stats_for_ordering is not None and 'Metric Value (%)' in summary_stats_for_ordering.columns:
         st.markdown("##### Posterior Distributions for Conversion Rates (Binary)"); fig_cr_bin, ax_cr_bin = plt.subplots()
         observed_max_cr_for_plot = 0.0
@@ -1019,7 +1018,7 @@ def show_analyze_results_page():
                         metric_type = st.session_state[f'metric_type_analysis{cycle_suffix}']
                         alpha = st.session_state[f'alpha_for_analysis{cycle_suffix}']
                         
-                        # --- Overall Analysis Calculation ---
+                        # --- Overall Analysis Calculation (Moved here, before display loop) ---
                         overall_summary_stats_calc = None 
                         if metric_type == 'Binary':
                             success_val_bin = st.session_state[f'success_value_analysis{cycle_suffix}']
@@ -1075,8 +1074,8 @@ def show_analyze_results_page():
                                 
                                 if not unique_segments.size:
                                      st.info("No unique segments found based on selected columns for segmentation.")
-                                else:
-                                    st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
+                                # else: # Info message moved to display section
+                                #     st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
 
                                 for segment_value in unique_segments:
                                     segment_df = overall_df_for_analysis[overall_df_for_analysis[segment_group_col] == segment_value].copy()
@@ -1139,7 +1138,6 @@ def show_analyze_results_page():
                 if pd.isna(success_val): overall_df_for_freq_display['__outcome_processed__'] = overall_df_for_freq_display[outcome_col_display].isna().astype(int)
                 else: overall_df_for_freq_display['__outcome_processed__'] = (overall_df_for_freq_display[outcome_col_display] == success_val).astype(int)
         
-        # Call display_frequentist_analysis for its display side effects; actual summary for Bayes is already in session_state
         display_frequentist_analysis(
             overall_df_for_freq_display, 
             metric_type_display, 
@@ -1151,7 +1149,6 @@ def show_analyze_results_page():
         )
 
         # --- Display Overall Bayesian Results ---
-        # Use the overall_freq_summary_stats from session state for ordering and ensuring plots have necessary columns
         overall_summary_stats_for_bayes_display = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}') 
         
         if metric_type_display == 'Binary':
@@ -1177,15 +1174,14 @@ def show_analyze_results_page():
                     st.markdown(f"#### Frequentist Analysis for Segment: {segment_name}")
                     segment_df_for_display = segment_info['data'] 
                     
-                    if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns:
+                    # Ensure __outcome_processed__ is available if it was created for overall binary
+                    if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns and '__outcome_processed__' in df_overall_display.columns:
                         success_val_seg = st.session_state[f'success_value_analysis{cycle_suffix}']
                         if pd.isna(success_val_seg): segment_df_for_display['__outcome_processed__'] = segment_df_for_display[outcome_col_display].isna().astype(int)
                         else: segment_df_for_display['__outcome_processed__'] = (segment_df_for_display[outcome_col_display] == success_val_seg).astype(int)
                     elif metric_type_display == 'Continuous': 
                         segment_df_for_display[outcome_col_display] = pd.to_numeric(segment_df_for_display[outcome_col_display], errors='coerce')
 
-                    # This call to display_frequentist_analysis is for display purposes within the segment expander.
-                    # The summary_stats it returns is what we'll use for the Bayesian display for this segment.
                     segment_summary_stats_for_segment_display = display_frequentist_analysis(
                         segment_df_for_display, 
                         metric_type_display, 
@@ -1197,13 +1193,14 @@ def show_analyze_results_page():
                     )
                     
                     segment_bayes_result_data = segmented_bayes_data.get(segment_name)
-                    
-                    # Use the summary_stats returned by display_frequentist_analysis for this segment for Bayesian display
-                    if segment_bayes_result_data is not None and segment_summary_stats_for_segment_display is not None:
+                    # Use the summary_stats that was calculated and stored during the main "Run Analysis" block for this segment for Bayesian display ordering
+                    segment_summary_for_bayes_ordering_from_run = segment_info.get('summary_stats') 
+
+                    if segment_bayes_result_data is not None and segment_summary_for_bayes_ordering_from_run is not None:
                         if metric_type_display == 'Binary':
-                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_stats_for_segment_display, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
+                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
                         elif metric_type_display == 'Continuous':
-                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_stats_for_segment_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
+                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
                     elif segment_summary_stats_for_segment_display is None or segment_summary_stats_for_segment_display.empty:
                          st.warning(f"Bayesian analysis for segment '{segment_name}' skipped due to lack of valid summary statistics from Frequentist step.")
                     else:
@@ -1281,7 +1278,7 @@ def show_interpret_results_page():
         * A **wide** interval indicates more uncertainty. Even if the point estimate (e.g., mean uplift) looks good, a wide interval should temper your confidence and suggests the true effect could be quite different.
     * **Example (using CI for difference in CR % points):**
         * Variation B shows a 2% lift. 95% CI: \[0.5%, 3.5%\]. MDE is 1%.
-            * *Interpretation:* Statistically significant (CI doesn't include 0). Practically significant (entire CI is above the 1% MDE, or at least the lower bound is close enough to be considered). High confidence in a meaningful positive effect.
+            * *Interpretation:* Statistically significant (doesn't include 0). Practically significant (entire CI is above the 1% MDE, or at least the lower bound is close enough to be considered). High confidence in a meaningful positive effect.
         * Variation C shows a 1% lift. 95% CI: \[-1.0%, 3.0%\]. MDE is 1%.
             * *Interpretation:* Not statistically significant (CI includes 0). Practical significance is uncertain; the true effect could range from a decrease to a notable increase.
         * Variation D shows a 0.2% lift. 95% CI: \[0.1%, 0.3%\]. MDE is 1%.
@@ -1491,4 +1488,4 @@ else:
 
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.9.0 (Cycle 9 - Interpreting Results - Part 1)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.9.1 (Cycle 9 - Interpreting Results - Part 2)")
