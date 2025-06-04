@@ -298,7 +298,7 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
 # --- Page Functions ---
 def show_introduction_page():
     # Displays the introduction to A/B testing.
-    st.header("Introduction to A/B Testing �")
+    st.header("Introduction to A/B Testing 🧪")
     st.markdown("This tool is designed to guide users in understanding and effectively conducting A/B tests.") 
     st.markdown("---")
     st.subheader("What is A/B Testing?") 
@@ -1018,7 +1018,7 @@ def show_analyze_results_page():
                         metric_type = st.session_state[f'metric_type_analysis{cycle_suffix}']
                         alpha = st.session_state[f'alpha_for_analysis{cycle_suffix}']
                         
-                        # --- Overall Analysis Calculation (Moved here, before display loop) ---
+                        # --- Overall Analysis Calculation ---
                         overall_summary_stats_calc = None 
                         if metric_type == 'Binary':
                             success_val_bin = st.session_state[f'success_value_analysis{cycle_suffix}']
@@ -1074,8 +1074,8 @@ def show_analyze_results_page():
                                 
                                 if not unique_segments.size:
                                      st.info("No unique segments found based on selected columns for segmentation.")
-                                # else: # Info message moved to display section
-                                #     st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
+                                else:
+                                    st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
 
                                 for segment_value in unique_segments:
                                     segment_df = overall_df_for_analysis[overall_df_for_analysis[segment_group_col] == segment_value].copy()
@@ -1174,8 +1174,7 @@ def show_analyze_results_page():
                     st.markdown(f"#### Frequentist Analysis for Segment: {segment_name}")
                     segment_df_for_display = segment_info['data'] 
                     
-                    # Ensure __outcome_processed__ is available if it was created for overall binary
-                    if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns and '__outcome_processed__' in df_overall_display.columns:
+                    if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns:
                         success_val_seg = st.session_state[f'success_value_analysis{cycle_suffix}']
                         if pd.isna(success_val_seg): segment_df_for_display['__outcome_processed__'] = segment_df_for_display[outcome_col_display].isna().astype(int)
                         else: segment_df_for_display['__outcome_processed__'] = (segment_df_for_display[outcome_col_display] == success_val_seg).astype(int)
@@ -1193,7 +1192,6 @@ def show_analyze_results_page():
                     )
                     
                     segment_bayes_result_data = segmented_bayes_data.get(segment_name)
-                    # Use the summary_stats that was calculated and stored during the main "Run Analysis" block for this segment for Bayesian display ordering
                     segment_summary_for_bayes_ordering_from_run = segment_info.get('summary_stats') 
 
                     if segment_bayes_result_data is not None and segment_summary_for_bayes_ordering_from_run is not None:
@@ -1347,7 +1345,117 @@ def show_interpret_results_page():
         * Consider if a larger sample size is feasible to gain more precision.
     """)
     st.markdown("---")
-    st.info("This page will continue to be expanded with more detailed frameworks, checklists for decision-making, and examples.")
+
+    st.subheader("7. A Practical Decision-Making Checklist")
+    st.markdown("""
+    Use this checklist to guide your decision-making process after analyzing your A/B test results. It's not exhaustive but covers key considerations:
+
+    **A. Statistical Evidence:**
+    * **Frequentist:**
+        * Is the p-value for the difference between the variation and control below your chosen alpha (e.g., 0.05)? (Indicates statistical significance)
+        * What is the Confidence Interval (CI) for the difference?
+            * Does it include zero? (If yes, suggests no statistically significant difference)
+            * How wide is it? (Wider = more uncertainty)
+    * **Bayesian:**
+        * What is the Probability of Being Better (P(Better > Control)) for the variation? (e.g., >95% often considered strong evidence)
+        * What is the Credible Interval (CrI) for the difference/uplift?
+            * Does it include zero? (If yes, "no difference" is plausible)
+            * How wide is it?
+        * What is the Expected Uplift/Difference? (The average effect you might see)
+        * If multiple variations, what is the Probability of Being Best for each?
+
+    **B. Practical & Business Significance:**
+    * **Effect Size:** Is the observed lift/difference (e.g., absolute uplift, expected difference) large enough to be meaningful for your business goals?
+    * **MDE Comparison:** How does the observed effect (and the bounds of its CI/CrI) compare to your pre-defined Minimum Detectable Effect (MDE)?
+        * Is the lower bound of the CI/CrI for a positive effect above your MDE? (Strongest case for practical significance)
+    * **Cost of Implementation:** What are the engineering, design, marketing, or other costs associated with launching the variation?
+    * **Potential ROI:** If the observed lift is real, what is the estimated return on investment considering the implementation costs?
+    * **Risk Assessment:**
+        * What is the risk of a false positive (Type I error - launching a variation that isn't truly better)? (Related to alpha)
+        * What is the risk of a false negative (Type II error - missing a truly better variation)? (Related to statistical power)
+        * From a Bayesian perspective, what's the probability the variation is actually worse or no different? (1 - P(Better > Control))
+        * What is the potential negative impact if the variation performs worse than expected or worse than control post-launch?
+
+    **C. Broader Context & Next Steps:**
+    * **Strategic Alignment:** Does the change align with your product/business strategy and brand?
+    * **User Experience:** Are there any potential negative impacts on other aspects of user experience not captured by the primary metric? (e.g., increased confusion, slower performance)
+    * **Segmentation:** Did the variation perform differently for key user segments? Could this lead to a targeted launch or further investigation?
+    * **Learnings:** What did you learn from this test, regardless of the outcome? How can these learnings inform future hypotheses?
+    * **Confidence in Decision:** Based on all the above, how confident are you in making a decision to launch, iterate, or discard?
+
+    **Decision:**
+    * [ ] **Launch Variation:** Strong evidence of positive, practically significant impact; benefits outweigh costs/risks.
+    * [ ] **Iterate on Variation:** Promising results but not a clear win; learnings suggest improvements.
+    * [ ] **Discard Variation:** No significant positive impact, or negative impact; costs outweigh benefits.
+    * [ ] **Learn More/Further Testing:** Inconclusive but potentially valuable; need more data or different approach.
+    """)
+    st.markdown("---")
+
+    st.subheader("8. Scenario-Based Examples")
+    st.markdown("""
+    Let's walk through a few hypothetical scenarios to see how these principles might be applied.
+    *(Note: These are simplified examples. Real-world interpretation often involves more nuance and domain expertise.)*
+
+    **Scenario 1: "The Clear Winner"**
+    * **Metric:** Purchase Conversion Rate (Binary)
+    * **Control CR:** 2.0%
+    * **Variation B CR:** 2.5% (Absolute Uplift: +0.5 percentage points, Relative Uplift: +25%)
+    * **Frequentist:**
+        * P-value: 0.001 (Statistically significant at α=0.05)
+        * 95% CI for Difference: \[+0.2%, +0.8%\]
+    * **Bayesian:**
+        * P(Variation B > Control): 99.8%
+        * Expected Uplift: +0.51 percentage points
+        * 95% CrI for Uplift: \[+0.22%, +0.82%\]
+    * **Business Context:** MDE was set at +0.3 percentage points. Implementation cost is low.
+    * **Interpretation & Decision:**
+        * Strong statistical evidence (p-value, P(B>A)).
+        * The entire CI/CrI for the uplift is above zero and also above the MDE.
+        * The expected uplift is practically significant.
+        * **Likely Decision:** Launch Variation B.
+
+    **Scenario 2: "Statistically Significant, Practically Meh?"**
+    * **Metric:** Average Session Duration (Continuous)
+    * **Control Mean:** 120 seconds
+    * **Variation B Mean:** 122 seconds (Absolute Difference: +2 seconds)
+    * **Frequentist:**
+        * P-value: 0.04 (Statistically significant at α=0.05)
+        * 95% CI for Difference: \[+0.3s, +3.7s\]
+    * **Bayesian:**
+        * P(Variation B > Control): 96%
+        * Expected Difference: +1.9 seconds
+        * 95% CrI for Difference: \[+0.2s, +3.6s\]
+    * **Business Context:** MDE was set at +10 seconds increase in session duration. The change was a minor UI tweak.
+    * **Interpretation & Decision:**
+        * Statistically significant, and Bayesian results also favor Variation B.
+        * However, the observed effect (+2s) and the entire CI/CrI (\[~0.2s, ~3.7s\]) are well below the MDE of +10 seconds.
+        * The improvement, while likely real, is not practically significant according to the pre-defined business goal.
+        * **Likely Decision:** Discard Variation B (or consider if the MDE was too ambitious for such a small change). The cost of rolling out even a minor change might not be justified for a ~2-second gain.
+
+    **Scenario 3: "Promising but Uncertain"**
+    * **Metric:** Sign-up Rate (Binary)
+    * **Control CR:** 5.0%
+    * **Variation B CR:** 5.8% (Absolute Uplift: +0.8 percentage points, Relative Uplift: +16%)
+    * **Frequentist:**
+        * P-value: 0.15 (Not statistically significant at α=0.05)
+        * 95% CI for Difference: \[-0.2%, +1.8%\]
+    * **Bayesian:**
+        * P(Variation B > Control): 88%
+        * Expected Uplift: +0.75 percentage points
+        * 95% CrI for Uplift: \[-0.15%, +1.75%\]
+    * **Business Context:** MDE was +0.5 percentage points. Sign-ups are a critical KPI.
+    * **Interpretation & Decision:**
+        * Not statistically significant by frequentist standards.
+        * Bayesian P(Better) is high (88%), suggesting it's quite likely better, but not overwhelmingly so.
+        * The Expected Uplift (+0.75pp) is above the MDE (+0.5pp).
+        * However, both the CI and CrI are wide and include zero, indicating considerable uncertainty. The true effect could be a small loss or a substantial gain.
+        * **Likely Decision:** This is a tricky one.
+            * If risk-averse: Stick with control or iterate.
+            * If more aggressive and the potential 1.75pp gain is very valuable: Consider launching, or (more likely) run the test longer/with more power to reduce the interval width and get a clearer picture. The 88% P(Better) might be enough for some to take a calculated risk if the downside is small.
+            * This often leads to discussions about the "cost of uncertainty."
+    """)
+    st.markdown("---")
+    st.info("This page will continue to be expanded with more detailed frameworks and examples for various situations.")
 
 
 def show_faq_page():
@@ -1488,4 +1596,4 @@ else:
 
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.9.1 (Cycle 9 - Interpreting Results - Part 2)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.9.2 (Cycle 9 - Interpreting Results - Part 3)")
