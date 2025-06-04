@@ -550,14 +550,15 @@ def display_frequentist_analysis(df_for_analysis, metric_type, outcome_col, vari
     
     elif metric_type == 'Continuous':
         control_mean = control_data['Mean_Value']
-        control_group_data_raw = df_cleaned[df_cleaned[variation_col] == control_name][outcome_col].dropna() # Use df_cleaned
+        # Use df_cleaned which was prepared at the start of this function for continuous
+        control_group_data_raw = df_cleaned[df_cleaned[variation_col] == control_name][outcome_col].dropna() 
         control_users_raw = len(control_group_data_raw)
 
         for index, row in summary_stats.iterrows():
             var_name, var_mean = row['Variation'], row['Mean_Value']
             if var_name == control_name: continue
             
-            var_group_data_raw = df_cleaned[df_cleaned[variation_col] == var_name][outcome_col].dropna() # Use df_cleaned
+            var_group_data_raw = df_cleaned[df_cleaned[variation_col] == var_name][outcome_col].dropna() 
             var_users_raw = len(var_group_data_raw)
             p_val_disp, ci_disp, sig_disp, abs_disp, rel_disp = 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'
             
@@ -650,9 +651,7 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
     st.markdown(f"Using a Beta(1,1) uninformative prior. Credible Intervals (CrI) at {100*(1-alpha):.0f}% level.")
     
     bayesian_data_disp_bin = []
-    # Use summary_stats_for_ordering for consistent order if available, else use keys from bayesian_results
     ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None and 'Variation' in summary_stats_for_ordering else list(bayesian_results.keys())
-
 
     for var_name in ordered_vars_for_display:
         if var_name not in bayesian_results: continue 
@@ -677,7 +676,6 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
     if bayesian_data_disp_bin:
         bayesian_df_bin = pd.DataFrame(bayesian_data_disp_bin); st.markdown(bayesian_df_bin.to_html(escape=False, index=False), unsafe_allow_html=True)
     
-    # Ensure summary_stats_for_ordering is not None and has the metric column before plotting
     if summary_stats_for_ordering is not None and 'Metric Value (%)' in summary_stats_for_ordering.columns:
         st.markdown("##### Posterior Distributions for Conversion Rates (Binary)"); fig_cr_bin, ax_cr_bin = plt.subplots()
         observed_max_cr_for_plot = 0.0
@@ -1028,18 +1026,17 @@ def show_analyze_results_page():
                                 overall_df_for_analysis['__outcome_processed__'] = overall_df_for_analysis[out_col_val].isna().astype(int)
                             else: 
                                 overall_df_for_analysis['__outcome_processed__'] = (overall_df_for_analysis[out_col_val] == success_val_bin).astype(int)
-                            st.session_state[f'metric_col_name{cycle_suffix}'] = 'Metric Value (%)' # Set this early
+                            st.session_state[f'metric_col_name{cycle_suffix}'] = 'Metric Value (%)'
                             
-                            # Ensure 'Conversions' is the name used in summary_stats for Bayesian function
                             overall_summary_stats_calc = overall_df_for_analysis.groupby(var_col_val).agg(Users=('__outcome_processed__', 'count'),Conversions=('__outcome_processed__', 'sum')).reset_index()
                             overall_summary_stats_calc.rename(columns={var_col_val: 'Variation'}, inplace=True)
                             if not overall_summary_stats_calc.empty and overall_summary_stats_calc['Users'].sum() > 0:
                                 overall_summary_stats_calc['Metric Value (%)'] = (overall_summary_stats_calc['Conversions'] / overall_summary_stats_calc['Users'].replace(0, np.nan) * 100).round(2)
-                            else: overall_summary_stats_calc = None 
+                            else: overall_summary_stats_calc = None # No valid users
                         
                         elif metric_type == 'Continuous':
                             overall_df_for_analysis[out_col_val] = pd.to_numeric(overall_df_for_analysis[out_col_val], errors='coerce')
-                            st.session_state[f'metric_col_name{cycle_suffix}'] = 'Mean_Value' # Set this early
+                            st.session_state[f'metric_col_name{cycle_suffix}'] = 'Mean_Value'
                             cleaned_overall_df_calc = overall_df_for_analysis.dropna(subset=[out_col_val])
                             if not cleaned_overall_df_calc.empty:
                                 overall_summary_stats_calc = cleaned_overall_df_calc.groupby(var_col_val).agg(Users=(out_col_val, 'count'), Mean_Value=(out_col_val, 'mean'), Std_Dev=(out_col_val, 'std'), Median_Value=(out_col_val,'median'), Std_Err=(out_col_val, lambda x: x.std(ddof=1) / np.sqrt(x.count()) if x.count() > 0 and pd.notna(x.std(ddof=1)) else np.nan)).reset_index()
@@ -1092,7 +1089,7 @@ def show_analyze_results_page():
                                                 segment_summary_stats_calc['Metric Value (%)'] = (segment_summary_stats_calc['Conversions'] / segment_summary_stats_calc['Users'].replace(0, np.nan) * 100).round(2)
                                             else: segment_summary_stats_calc = None
                                     elif metric_type == 'Continuous':
-                                        segment_df[out_col_val] = pd.to_numeric(segment_df[out_col_val], errors='coerce') # Ensure numeric for segment
+                                        segment_df[out_col_val] = pd.to_numeric(segment_df[out_col_val], errors='coerce') 
                                         cleaned_segment_df_calc = segment_df.dropna(subset=[out_col_val]) 
                                         if not cleaned_segment_df_calc.empty:
                                             segment_summary_stats_calc = cleaned_segment_df_calc.groupby(var_col_val).agg(Users=(out_col_val, 'count'), Mean_Value=(out_col_val, 'mean'), Std_Dev=(out_col_val, 'std'), Median_Value=(out_col_val,'median'), Std_Err=(out_col_val, lambda x: x.std(ddof=1) / np.sqrt(x.count()) if x.count() > 0 and pd.notna(x.std(ddof=1)) else np.nan)).reset_index()
@@ -1130,7 +1127,7 @@ def show_analyze_results_page():
         control_name_display = st.session_state[f'control_group_name_analysis{cycle_suffix}']
         outcome_col_display = st.session_state[f'outcome_col_analysis{cycle_suffix}']
         variation_col_display = st.session_state[f'variation_col_analysis{cycle_suffix}']
-        df_overall_display = st.session_state[f'df_analysis{cycle_suffix}'] # This is the original full dataframe for freq display
+        df_overall_display = st.session_state[f'df_analysis{cycle_suffix}'] 
         
         # --- Display Overall Frequentist Analysis ---
         st.markdown("---"); st.subheader(f"Overall Frequentist Analysis Results ({metric_type_display} Outcome)")
@@ -1141,8 +1138,9 @@ def show_analyze_results_page():
                 if pd.isna(success_val): overall_df_for_freq_display['__outcome_processed__'] = overall_df_for_freq_display[outcome_col_display].isna().astype(int)
                 else: overall_df_for_freq_display['__outcome_processed__'] = (overall_df_for_freq_display[outcome_col_display] == success_val).astype(int)
         
-        # This call is for display. The summary for Bayesian was already calculated and stored.
-        display_frequentist_analysis( 
+        # This call is primarily for display; the summary for Bayesian was already calculated and stored.
+        # The returned summary_stats from this call is for the overall data and can be used for Bayesian display ordering.
+        overall_summary_stats_for_display = display_frequentist_analysis(
             overall_df_for_freq_display, 
             metric_type_display, 
             outcome_col_display, 
@@ -1153,15 +1151,13 @@ def show_analyze_results_page():
         )
 
         # --- Display Overall Bayesian Results ---
-        # Use the definitively calculated overall_freq_summary_stats for Bayesian display
-        overall_summary_stats_for_bayes_display = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}') 
-        
+        # Use the overall_summary_stats_for_display if it's valid, otherwise, the display functions will handle None.
         if metric_type_display == 'Binary':
             bayesian_results_to_display = st.session_state.get(f'overall_bayesian_results_binary{cycle_suffix}')
-            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, section_title_prefix="Overall")
+            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_display, control_name_display, alpha_display, section_title_prefix="Overall")
         elif metric_type_display == 'Continuous':
             bayesian_results_to_display_cont = st.session_state.get(f'overall_bayesian_results_continuous{cycle_suffix}')
-            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
+            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
 
         # --- Display Segmented Analysis ---
         segmented_freq_data = st.session_state.get(f'segmented_freq_results{cycle_suffix}', {})
@@ -1177,10 +1173,16 @@ def show_analyze_results_page():
             for segment_name, segment_info in segmented_freq_data.items():
                 with st.expander(f"Segment: {segment_name}", expanded=False):
                     st.markdown(f"#### Frequentist Analysis for Segment: {segment_name}")
-                    segment_df_for_display = segment_info['data'] # This is the raw segment data with __outcome_processed__ if binary
+                    segment_df_for_display = segment_info['data'] 
                     
-                    # The display_frequentist_analysis function will calculate its own summary stats from segment_df_for_display
-                    segment_summary_stats_for_display_func = display_frequentist_analysis(
+                    if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns:
+                        success_val_seg = st.session_state[f'success_value_analysis{cycle_suffix}']
+                        if pd.isna(success_val_seg): segment_df_for_display['__outcome_processed__'] = segment_df_for_display[outcome_col_display].isna().astype(int)
+                        else: segment_df_for_display['__outcome_processed__'] = (segment_df_for_display[outcome_col_display] == success_val_seg).astype(int)
+                    elif metric_type_display == 'Continuous': 
+                        segment_df_for_display[outcome_col_display] = pd.to_numeric(segment_df_for_display[outcome_col_display], errors='coerce')
+
+                    segment_summary_stats_for_segment_display = display_frequentist_analysis(
                         segment_df_for_display, 
                         metric_type_display, 
                         outcome_col_display, 
@@ -1190,17 +1192,16 @@ def show_analyze_results_page():
                         summary_stats_key_suffix=f"_segment_display_{segment_name.replace(' | ','_')}"
                     )
                     
-                    # Display Bayesian results for this segment using the summary stats calculated *during the run analysis phase*
                     segment_bayes_result_data = segmented_bayes_data.get(segment_name)
-                    # Use the summary_stats stored from the calculation phase for Bayesian display ordering
-                    segment_summary_for_bayes_ordering = segment_info.get('summary_stats') 
+                    # Use the summary_stats that was calculated and stored during the main "Run Analysis" block for this segment
+                    segment_summary_for_bayes_ordering_from_run = segment_info.get('summary_stats') 
 
-                    if segment_bayes_result_data is not None and segment_summary_for_bayes_ordering is not None:
+                    if segment_bayes_result_data is not None and segment_summary_for_bayes_ordering_from_run is not None:
                         if metric_type_display == 'Binary':
-                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_for_bayes_ordering, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
+                            display_bayesian_binary_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
                         elif metric_type_display == 'Continuous':
-                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_for_bayes_ordering, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
-                    elif segment_summary_stats_for_display_func is None or segment_summary_stats_for_display_func.empty: # Check if freq summary was valid
+                            display_bayesian_continuous_results(segment_bayes_result_data, segment_summary_for_bayes_ordering_from_run, control_name_display, alpha_display, outcome_col_display, section_title_prefix=f"Segment '{segment_name}'")
+                    elif segment_summary_stats_for_segment_display is None or segment_summary_stats_for_segment_display.empty:
                          st.warning(f"Bayesian analysis for segment '{segment_name}' skipped due to lack of valid summary statistics from Frequentist step.")
                     else:
                         st.info(f"Bayesian analysis results for segment '{segment_name}' are not available or could not be computed.")
@@ -1212,8 +1213,75 @@ def show_analyze_results_page():
 def show_interpret_results_page():
     # Page for interpreting results and decision guidance.
     st.header("Interpreting Results & Detailed Decision Guidance 🧐")
-    st.write("This section will guide you on how to integrate statistical findings with practical significance and business context to make informed decisions.")
-    st.info("Coming in Cycle 9: Understanding statistical vs. practical significance, decision frameworks, and next steps after an A/B test!")
+    st.markdown("""
+    Once your A/B test is complete and you've analyzed the data, the next crucial step is interpretation. This involves looking beyond just a single number (like a p-value or a lift percentage) and considering the broader context to make an informed decision.
+    """)
+    st.markdown("---")
+
+    st.subheader("1. Statistical Significance vs. Practical Significance")
+    st.markdown("""
+    * **Statistical Significance (p-value & alpha):**
+        * A statistically significant result (typically p-value < alpha, e.g., < 0.05) suggests that the observed difference between variations is unlikely to have occurred by random chance alone, assuming there's no real difference (the null hypothesis).
+        * It **does not** tell you the *size* or *importance* of the difference.
+        * With very large sample sizes, even tiny, practically meaningless differences can become statistically significant.
+    * **Practical Significance (Business Impact & MDE):**
+        * This refers to whether the observed difference is large enough to be meaningful or valuable from a business or user experience perspective.
+        * Does the change lead to an improvement that justifies the cost of implementation, potential risks, or engineering effort?
+        * Your **Minimum Detectable Effect (MDE)**, defined during test design, is a key benchmark for practical significance. If the observed effect (and its confidence/credible interval) is smaller than your MDE, it might not be practically significant even if it's statistically significant.
+    * **The Four Scenarios:**
+        1.  **Statistically Significant & Practically Significant:** Ideal outcome! You have evidence the effect is real and large enough to matter.
+        2.  **Statistically Significant & Not Practically Significant:** The effect is likely real, but too small to be worth implementing. Consider if there are any sub-segments where the effect is larger.
+        3.  **Not Statistically Significant & Practically Significant (Potentially):** The observed difference is large enough that it *would* be valuable if real, but your test lacked the power to confirm it statistically. This might warrant further testing with a larger sample if the potential gain is high.
+        4.  **Not Statistically Significant & Not Practically Significant:** No strong evidence of a real effect, and even if there were one, it's likely too small to matter.
+    * **Example:** A 0.01% increase in conversion rate might be statistically significant with millions of users, but it's unlikely to be practically significant for most businesses. Conversely, a 5% increase might be practically significant, but if your sample size was too small, it might not achieve statistical significance.
+    """)
+    st.markdown("---")
+
+    st.subheader("2. The Role of Effect Size")
+    st.markdown("""
+    * **What is it?** Effect size is a quantitative measure of the magnitude of an experimental effect. Unlike significance tests, it's not affected by sample size.
+    * **Why is it important?**
+        * It helps you understand the *strength* of the relationship or the *magnitude* of the difference between groups.
+        * It provides a more complete picture when combined with p-values.
+        * It allows for comparison of results across different studies or tests (meta-analysis).
+        * It's crucial for determining practical significance.
+    * **Common Measures (Examples - this app doesn't calculate these directly yet):**
+        * **For Binary Outcomes (Proportions):**
+            * *Risk Difference (Absolute Uplift):* `CR_variation - CR_control`. Directly interpretable.
+            * *Relative Risk (Relative Uplift):* `CR_variation / CR_control`.
+            * *Odds Ratio:* `(Conversions_V / NonConversions_V) / (Conversions_C / NonConversions_C)`.
+        * **For Continuous Outcomes (Means):**
+            * *Difference in Means (Absolute Difference):* `Mean_variation - Mean_control`.
+            * *Cohen's d:* A standardized mean difference, `(Mean_variation - Mean_control) / Pooled_StdDev`. Provides a scale-independent measure (e.g., small ≈ 0.2, medium ≈ 0.5, large ≈ 0.8).
+    * **Interpretation:** Always consider the effect size in the context of your specific domain and goals. What constitutes a "small" or "large" effect can vary.
+    """)
+    st.markdown("---")
+
+    st.subheader("3. Leveraging Confidence and Credible Intervals")
+    st.markdown("""
+    Both Frequentist Confidence Intervals (CIs) and Bayesian Credible Intervals (CrIs) provide a range of plausible values for the true effect (e.g., the true difference in conversion rates or means).
+    * **Range of Plausible Values:** They quantify the uncertainty around your point estimate (e.g., the observed lift).
+        * A **Frequentist CI** (e.g., 95% CI): If you were to repeat the experiment many times, 95% of the CIs constructed would contain the true population parameter.
+        * A **Bayesian CrI** (e.g., 95% CrI): There is a 95% probability that the true population parameter lies within this interval, given your data and prior.
+    * **Checking for "No Effect":**
+        * If a CI/CrI for the *difference* between a variation and control **includes zero**, it means that "no difference" is a plausible value.
+            * For Frequentist CIs, this often aligns with a non-significant p-value (p > alpha).
+            * For Bayesian CrIs, it means there's a non-negligible probability that the true difference is zero or even in the opposite direction.
+    * **Assessing Practical Significance:**
+        * Compare the entire interval (especially the lower bound for an improvement, or upper bound for a cost/decrease) against your pre-defined **Minimum Detectable Effect (MDE)** or any other threshold of practical importance.
+        * If the *entire* CI/CrI is above your MDE for a positive metric (or below for a negative metric like cost), you have stronger evidence of a practically significant result.
+        * If the interval overlaps with your MDE, the result is more ambiguous regarding practical significance.
+    * **Width of the Interval:**
+        * A **narrow** interval suggests a more precise estimate of the true effect.
+        * A **wide** interval indicates more uncertainty. This can happen with smaller sample sizes or high variability in the data. Even if the point estimate looks good, a wide interval should temper your confidence.
+    * **Example:**
+        * Variation B shows a 2% lift with a 95% CI for the difference of [0.5%, 3.5%]. This is statistically significant (doesn't include 0) and, if your MDE was 1%, it's also practically significant as the entire range is above MDE.
+        * Variation C shows a 1% lift with a 95% CI of [-1.0%, 3.0%]. This is not statistically significant (includes 0).
+        * Variation D shows a 0.2% lift with a 95% CI of [0.1%, 0.3%]. Statistically significant, but if your MDE is 1%, it's not practically significant.
+    """)
+    st.markdown("---")
+    st.info("More content coming soon, including: Integrating Bayesian Probabilities (P(Better), P(Best)), Decision Frameworks (e.g., Risk vs. Reward), and Post-Test Actions (Launch, Iterate, Discard, Learn).")
+
 
 def show_faq_page():
     # Displays FAQ on common misinterpretations.
@@ -1238,7 +1306,7 @@ def show_faq_page():
         },
         "Q: Is a 200% lift with a small sample size (e.g., 1 conversion vs. 3 conversions) reliable?": {
             "answer": "Not necessarily, and often not. While the percentage lift might look huge, the absolute numbers are tiny. With such small numbers, results are highly susceptible to random chance. A single extra conversion can create a massive percentage lift. Statistical significance tests (and Bayesian credible intervals) will likely show very high uncertainty (e.g., a very wide confidence/credible interval for the difference). Always consider the absolute numbers, sample size, and the uncertainty metrics, not just the headline lift percentage.",
-            "example": "If one person buys a $100 item in Control (1 user, 1 conversion) and three people buy in Variation (3 users, 3 conversions), that's a 200% lift in users who converted if you only count those specific users. But it's based on tiny numbers. What if the next user in Control also buys? The lift changes dramatically."
+            "example": "If one person buys a \\$100 item in Control (1 user, 1 conversion) and three people buy in Variation (3 users, 3 conversions), that's a 200% lift in users who converted if you only count those specific users. But it's based on tiny numbers. What if the next user in Control also buys? The lift changes dramatically."
         },
         "Q: My Bayesian test shows P(B>A) = 92%. Does this mean there's a 92% chance my decision to launch B is correct?": {
             "answer": "No, not directly. P(B>A) = 92% (or 'Probability B is Better than A') means there's a 92% probability that the *true underlying parameter* (e.g., true conversion rate) of Variation B is greater than that of Variation A, given your data and your prior beliefs. \n\nWhile this is strong evidence in favor of B, the 'correctness' of a launch decision also involves considering:\n* **Magnitude of the difference:** Is the expected uplift practically significant? (See the Credible Interval for Uplift).\n* **Costs and risks:** What are the costs of implementation? What are the risks if B is actually slightly worse (there's still an 8% chance A is better or they are the same)?\n* **Business goals:** How does this uplift align with overall objectives?",
@@ -1338,7 +1406,7 @@ PAGES = {
     "Introduction to A/B Testing": show_introduction_page,
     "Designing Your A/B Test": show_design_test_page,
     "Analyze Results": show_analyze_results_page,
-    "Interpreting Results & Detailed Decision Guidance": show_interpret_results_page,
+    "Interpreting Results & Detailed Decision Guidance": show_interpret_results_page, 
     "Bayesian Analysis Guidelines": show_bayesian_guidelines_page, 
     "FAQ on Misinterpretations": show_faq_page,
     "Roadmap / Possible Future Features": show_roadmap_page
@@ -1353,4 +1421,4 @@ else:
 
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.8.2 (Cycle 8 - Segmented Bayesian)") # Version updated in display
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.9.0 (Cycle 9 - Interpreting Results - Part 1)")
