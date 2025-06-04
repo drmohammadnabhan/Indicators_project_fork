@@ -62,6 +62,8 @@ def calculate_continuous_sample_size(baseline_mean, std_dev, mde_abs_mean, power
 def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=1, prior_beta=1, n_samples=10000, ci_level=0.95):
     # Performs Bayesian analysis for binary outcomes using a Beta-Binomial model.
     results = {}; posterior_params = {}
+    if summary_stats is None or summary_stats.empty:
+        return None, "Summary statistics are empty or None for Bayesian binary analysis."
     if 'Variation' not in summary_stats.columns:
         original_var_col_name = summary_stats.columns[0] 
         if original_var_col_name != 'Variation': summary_stats = summary_stats.rename(columns={original_var_col_name: 'Variation'})
@@ -69,7 +71,7 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     for index, row in summary_stats.iterrows():
         var_name = row['Variation']
         users = int(row['Users']) if pd.notna(row['Users']) else 0
-        conversions = int(row['Conversions']) if pd.notna(row['Conversions']) else 0 # Expects 'Conversions'
+        conversions = int(row['Conversions']) if pd.notna(row['Conversions']) else 0
 
         alpha_post = prior_alpha + conversions; beta_post = prior_beta + (users - conversions)
         posterior_params[var_name] = {'alpha': alpha_post, 'beta': beta_post}
@@ -77,14 +79,10 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
         if users > 0 and alpha_post > 0 and beta_post > 0 : 
             samples = beta_dist.rvs(alpha_post, beta_post, size=n_samples)
             results[var_name] = {
-                'samples': samples, 
-                'mean_cr': np.mean(samples), 
-                'median_cr': np.median(samples), 
+                'samples': samples, 'mean_cr': np.mean(samples), 'median_cr': np.median(samples), 
                 'cr_ci_low': beta_dist.ppf((1-ci_level)/2, alpha_post, beta_post), 
                 'cr_ci_high': beta_dist.ppf(1-(1-ci_level)/2, alpha_post, beta_post), 
-                'alpha_post': alpha_post, 
-                'beta_post': beta_post, 
-                'diff_samples_vs_control': None 
+                'alpha_post': alpha_post, 'beta_post': beta_post, 'diff_samples_vs_control': None 
             }
         else: 
              results[var_name] = {
@@ -94,13 +92,15 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
                 'uplift_ci_low': np.nan, 'uplift_ci_high': np.nan, 'expected_uplift_abs': np.nan, 'prob_best': np.nan
             }
     
-    if control_group_name not in results or np.all(np.isnan(results[control_group_name]['samples'])): 
-        for var_name in results:
-            results[var_name].update({'prob_better_than_control': np.nan, 'uplift_ci_low': np.nan, 
+    if control_group_name not in results or (results[control_group_name] and np.all(np.isnan(results[control_group_name]['samples']))): 
+        for var_name_key in results: # Use var_name_key to avoid conflict
+            results[var_name_key].update({'prob_better_than_control': np.nan, 'uplift_ci_low': np.nan, 
                                       'uplift_ci_high': np.nan, 'expected_uplift_abs': np.nan, 'prob_best': np.nan})
-        return results, (f"Control group '{control_group_name}' not found or has no valid data for Bayesian analysis." 
-                         if control_group_name not in results else 
-                         f"Control group '{control_group_name}' has insufficient data for Bayesian comparison.")
+        err_msg = (f"Control group '{control_group_name}' not found in results for Bayesian analysis." 
+                   if control_group_name not in results else 
+                   f"Control group '{control_group_name}' has insufficient data for Bayesian comparison.")
+        # st.warning(err_msg) # Warning moved to calling function for context
+        return results, err_msg
 
     control_samples = results[control_group_name]['samples']
     
@@ -130,9 +130,9 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
     valid_ordered_vars = [name for name in all_var_names if name in results and not np.all(np.isnan(results[name]['samples']))]
 
     if not valid_ordered_vars:
-        for var_name in all_var_names: 
-            if var_name in results: results[var_name]['prob_best'] = np.nan
-            else: results[var_name] = {'prob_best': np.nan}
+        for var_name_key in all_var_names: 
+            if var_name_key in results: results[var_name_key]['prob_best'] = np.nan
+            else: results[var_name_key] = {'prob_best': np.nan}
         return results, "No variations with valid data for P(Best) calculation."
     
     all_samples_matrix = np.array([results[var]['samples'] for var in valid_ordered_vars])
@@ -154,24 +154,26 @@ def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=
         else:
             prob_best = np.full(len(all_var_names), np.nan)
 
-        for i, var_name in enumerate(all_var_names):
-            if var_name in results: 
-                results[var_name]['prob_best'] = prob_best[i] if var_name in valid_ordered_vars else np.nan
+        for i, var_name_key in enumerate(all_var_names):
+            if var_name_key in results: 
+                results[var_name_key]['prob_best'] = prob_best[i] if var_name_key in valid_ordered_vars else np.nan
             else: 
-                 results[var_name] = {'prob_best': np.nan} 
+                 results[var_name_key] = {'prob_best': np.nan} 
     else: 
-        for var_name in all_var_names:
-            if var_name in results:
-                is_single_valid = (len(valid_ordered_vars) == 1 and var_name == valid_ordered_vars[0])
-                results[var_name]['prob_best'] = 1.0 if is_single_valid else (0.0 if len(valid_ordered_vars) > 1 else np.nan)
+        for var_name_key in all_var_names:
+            if var_name_key in results:
+                is_single_valid = (len(valid_ordered_vars) == 1 and var_name_key == valid_ordered_vars[0])
+                results[var_name_key]['prob_best'] = 1.0 if is_single_valid else (0.0 if len(valid_ordered_vars) > 1 else np.nan)
             else: 
-                results[var_name] = {'prob_best': np.nan}
+                results[var_name_key] = {'prob_best': np.nan}
                 
     return results, None
 
 def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_samples=10000, ci_level=0.95):
     # Performs Bayesian analysis for continuous outcomes.
     results = {}
+    if summary_stats is None or summary_stats.empty:
+        return None, "Summary statistics are empty or None for Bayesian continuous analysis."
     
     if 'Variation' not in summary_stats.columns:
         return None, "Summary statistics missing 'Variation' column."
@@ -214,14 +216,14 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
             'diff_samples_vs_control': None 
         }
 
-    if control_group_name not in results or np.all(np.isnan(results[control_group_name]['samples'])):
-        for var_name in results: 
-            results[var_name].update({'prob_better_than_control': np.nan, 'diff_ci_low': np.nan, 
+    if control_group_name not in results or (results[control_group_name] and np.all(np.isnan(results[control_group_name]['samples']))):
+        for var_name_key in results: 
+            results[var_name_key].update({'prob_better_than_control': np.nan, 'diff_ci_low': np.nan, 
                                       'diff_ci_high': np.nan, 'expected_diff_abs': np.nan, 'prob_best': np.nan})
-        # st.warning(f"Control group '{control_group_name}' has insufficient or invalid data for Bayesian comparison.") # Moved warning to calling function
-        return results, (f"Control group '{control_group_name}' not found or has no valid data for Bayesian analysis." 
-                         if control_group_name not in results else 
-                         f"Control group '{control_group_name}' has insufficient data for Bayesian comparison.")
+        err_msg = (f"Control group '{control_group_name}' not found in results for Bayesian analysis." 
+                   if control_group_name not in results else 
+                   f"Control group '{control_group_name}' has insufficient data for Bayesian comparison.")
+        return results, err_msg
 
     control_samples = results[control_group_name]['samples']
     
@@ -253,9 +255,9 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
     valid_var_names_for_pbest = [name for name in all_var_names_cont if name in results and not np.all(np.isnan(results[name]['samples']))]
 
     if not valid_var_names_for_pbest:
-        for var_name in all_var_names_cont: 
-            if var_name in results: results[var_name]['prob_best'] = np.nan
-            else: results[var_name] = {'prob_best': np.nan} 
+        for var_name_key in all_var_names_cont: 
+            if var_name_key in results: results[var_name_key]['prob_best'] = np.nan
+            else: results[var_name_key] = {'prob_best': np.nan} 
         return results, "No variations with valid data found for P(Best) calculation in continuous Bayesian analysis."
 
     all_samples_matrix_cont = np.array([results[var]['samples'] for var in valid_var_names_for_pbest])
@@ -277,19 +279,19 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
         else: 
             prob_best_cont = np.full(len(all_var_names_cont), np.nan)
 
-        for i, var_name in enumerate(all_var_names_cont):
-            if var_name in results:
-                results[var_name]['prob_best'] = prob_best_cont[i] if var_name in valid_var_names_for_pbest else np.nan
+        for i, var_name_key in enumerate(all_var_names_cont):
+            if var_name_key in results:
+                results[var_name_key]['prob_best'] = prob_best_cont[i] if var_name_key in valid_var_names_for_pbest else np.nan
             else: 
-                results[var_name] = {'prob_best': np.nan} 
+                results[var_name_key] = {'prob_best': np.nan} 
                 
     else: 
-        for var_name in all_var_names_cont:
-            if var_name in results:
-                is_single_valid_var = (len(valid_var_names_for_pbest) == 1 and var_name == valid_var_names_for_pbest[0])
-                results[var_name]['prob_best'] = 1.0 if is_single_valid_var else (0.0 if len(valid_var_names_for_pbest) > 1 else np.nan)
+        for var_name_key in all_var_names_cont:
+            if var_name_key in results:
+                is_single_valid_var = (len(valid_var_names_for_pbest) == 1 and var_name_key == valid_var_names_for_pbest[0])
+                results[var_name_key]['prob_best'] = 1.0 if is_single_valid_var else (0.0 if len(valid_var_names_for_pbest) > 1 else np.nan)
             else:
-                results[var_name] = {'prob_best': np.nan}
+                results[var_name_key] = {'prob_best': np.nan}
                 
     return results, None
 
@@ -460,11 +462,11 @@ def display_frequentist_analysis(df_for_analysis, metric_type, outcome_col, vari
     # Calculate summary statistics
     if metric_type == 'Binary':
         if '__outcome_processed__' not in df_for_analysis.columns:
-            st.error("Internal error: '__outcome_processed__' column missing for binary frequentist analysis.")
+            st.error(f"Internal error: '__outcome_processed__' column missing for binary frequentist analysis {summary_stats_key_suffix}.")
             return None
         summary_stats = df_for_analysis.groupby(variation_col).agg(
             Users=('__outcome_processed__', 'count'),
-            Conversions=('__outcome_processed__', 'sum') # Changed from Converts
+            Conversions=('__outcome_processed__', 'sum') 
         ).reset_index()
         summary_stats.rename(columns={variation_col: 'Variation'}, inplace=True)
         if summary_stats['Users'].sum() == 0: 
@@ -609,23 +611,21 @@ def display_frequentist_analysis(df_for_analysis, metric_type, outcome_col, vari
     if metric_type == 'Continuous': 
         st.markdown("##### Distribution of Outcomes by Variation (Box Plots)")
         try:
-            if not df_for_analysis.empty and variation_col in df_for_analysis.columns and outcome_col in df_for_analysis.columns: # Ensure outcome_col also exists
-                # df_for_analysis for continuous should already have outcome_col numeric and NaNs dropped by the time it's passed here for segments
-                # Or if it's the overall_df_for_freq, it's also cleaned.
+            if not df_for_analysis.empty and variation_col in df_for_analysis.columns and outcome_col in df_for_analysis.columns: 
                 
-                unique_vars_plot = sorted(df_for_analysis[variation_col].astype(str).unique()) # Cast to str for sorting robustness
-                if control_name in unique_vars_plot: # control_name is already string
+                unique_vars_plot = sorted(df_for_analysis[variation_col].astype(str).unique()) 
+                if control_name in unique_vars_plot: 
                     unique_vars_plot.insert(0, unique_vars_plot.pop(unique_vars_plot.index(control_name)))
 
                 boxplot_data = []
                 valid_labels = []
                 for var_name_plot in unique_vars_plot:
                     data_series = df_for_analysis[df_for_analysis[variation_col].astype(str) == var_name_plot][outcome_col] 
-                    if not data_series.empty and data_series.notna().any(): # Ensure there's some non-NaN data
-                        boxplot_data.append(data_series.dropna()) # Drop NaNs again just in case for boxplot
+                    if not data_series.empty and data_series.notna().any(): 
+                        boxplot_data.append(data_series.dropna()) 
                         valid_labels.append(var_name_plot)
                 
-                if not boxplot_data or not valid_labels: # Check if any valid data remains for plotting
+                if not boxplot_data or not valid_labels: 
                     st.caption(f"Not enough valid data for one or more variations to display box plots {summary_stats_key_suffix}.")
                 else:
                     fig_box, ax_box = plt.subplots(); 
@@ -639,6 +639,232 @@ def display_frequentist_analysis(df_for_analysis, metric_type, outcome_col, vari
             else: st.caption(f"Not enough data or columns missing to display box plots {summary_stats_key_suffix}.")
         except Exception as e_plot: st.warning(f"Could not generate box plots {summary_stats_key_suffix}: {e_plot}")
     return summary_stats
+
+# --- NEW: Helper function for Bayesian Binary Display ---
+def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering, control_name, alpha, section_title_prefix="Overall"):
+    if not bayesian_results:
+        st.info(f"{section_title_prefix} Bayesian analysis results for binary outcomes are not available or could not be computed.")
+        return
+
+    st.markdown(f"---"); st.subheader(f"{section_title_prefix} Bayesian Analysis Results (Binary Outcome)")
+    st.markdown(f"Using a Beta(1,1) uninformative prior. Credible Intervals (CrI) at {100*(1-alpha):.0f}% level.")
+    
+    bayesian_data_disp_bin = []
+    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None else list(bayesian_results.keys())
+
+    for var_name in ordered_vars_for_display:
+        if var_name not in bayesian_results: continue 
+        b_res = bayesian_results[var_name]
+        prob_better_html = f"<span title=\"Probability that this variation's true conversion rate is higher than the control's. Also consider the Credible Interval for Uplift to understand magnitude and uncertainty.\">{b_res.get('prob_better_than_control',0)*100:.2f}%</span>" if b_res.get('prob_better_than_control') is not None else "N/A (Control)"
+        cri_uplift_html = f"<span title=\"The range where the true uplift over control likely lies. If this interval includes 0, 'no difference' or a negative effect are plausible.\">[{b_res.get('uplift_ci_low', 0)*100:.2f}, {b_res.get('uplift_ci_high', 0)*100:.2f}]</span>" if b_res.get('uplift_ci_low') is not None else "N/A (Control)"
+        bayesian_data_disp_bin.append({
+            "Variation": var_name, "Posterior Mean CR (%)": f"{b_res.get('mean_cr',0)*100:.2f}", 
+            f"{100*(1-alpha):.0f}% CrI for CR (%)": f"[{b_res.get('cr_ci_low',0)*100:.2f}, {b_res.get('cr_ci_high',0)*100:.2f}]", 
+            "P(Better > Control) (%)": prob_better_html, 
+            "Expected Uplift (abs %)": f"{b_res.get('expected_uplift_abs', 0)*100:.2f}" if b_res.get('expected_uplift_abs') is not None else "N/A (Control)", 
+            f"{100*(1-alpha):.0f}% CrI for Uplift (abs %)": cri_uplift_html, 
+            "P(Being Best) (%)": f"{b_res.get('prob_best',0)*100:.2f}"
+        })
+    if bayesian_data_disp_bin:
+        bayesian_df_bin = pd.DataFrame(bayesian_data_disp_bin); st.markdown(bayesian_df_bin.to_html(escape=False, index=False), unsafe_allow_html=True)
+    
+    # Plots
+    if summary_stats_for_ordering is not None and 'Metric Value (%)' in summary_stats_for_ordering.columns:
+        st.markdown("##### Posterior Distributions for Conversion Rates (Binary)"); fig_cr_bin, ax_cr_bin = plt.subplots()
+        # ... (Plotting logic as before, ensure it uses summary_stats_for_ordering for x-axis limits etc.)
+        observed_max_cr_for_plot = 0.0
+        numeric_crs_bin = pd.to_numeric(summary_stats_for_ordering['Metric Value (%)'], errors='coerce')
+        if not numeric_crs_bin.empty and numeric_crs_bin.notna().any(): observed_max_cr_for_plot = numeric_crs_bin.max() / 100.0
+        else: observed_max_cr_for_plot = 0.1 
+        posterior_max_cr_for_plot_bin = 0.0
+        all_posterior_highs_bin = [res.get('cr_ci_high') for res in bayesian_results.values() if res.get('cr_ci_high') is not None]
+        if all_posterior_highs_bin: posterior_max_cr_for_plot_bin = max(all_posterior_highs_bin)
+        final_x_limit_candidate_bin = max(observed_max_cr_for_plot, posterior_max_cr_for_plot_bin)
+        x_cr_plot_limit_bin = min(1.0, final_x_limit_candidate_bin + 0.05) 
+        if x_cr_plot_limit_bin <= 0.01: x_cr_plot_limit_bin = 0.1 
+        x_cr_range_bin = np.linspace(0, x_cr_plot_limit_bin, 300)
+        max_density_bin = 0
+        for var_name in ordered_vars_for_display: 
+            if var_name not in bayesian_results: continue
+            b_res = bayesian_results[var_name]
+            alpha_p, beta_p = b_res.get('alpha_post', 1), b_res.get('beta_post', 1)
+            if alpha_p > 0 and beta_p > 0 and not (np.isnan(alpha_p) or np.isnan(beta_p)): # Ensure valid params for pdf
+                posterior_pdf = beta_dist.pdf(x_cr_range_bin, alpha_p, beta_p)
+                ax_cr_bin.plot(x_cr_range_bin, posterior_pdf, label=f"{var_name} (α={alpha_p:.1f},β={beta_p:.1f})")
+                ax_cr_bin.fill_between(x_cr_range_bin, posterior_pdf, alpha=0.2)
+                if posterior_pdf is not None and np.any(np.isfinite(posterior_pdf)): 
+                    finite_pdf = posterior_pdf[np.isfinite(posterior_pdf)]
+                    if finite_pdf.size > 0: max_density_bin = max(max_density_bin, np.nanmax(finite_pdf))
+        if max_density_bin > 0: ax_cr_bin.set_ylim(0, max_density_bin * 1.1)
+        else: ax_cr_bin.set_ylim(0,1)
+        ax_cr_bin.set_title("Posterior Distributions of CRs"); ax_cr_bin.set_xlabel("Conversion Rate"); ax_cr_bin.set_ylabel("Density"); ax_cr_bin.legend(); st.pyplot(fig_cr_bin); plt.close(fig_cr_bin)
+
+        st.markdown("##### Posterior Distribution of Uplift (Variation CR - Control CR)")
+        num_vars_to_plot_bin = sum(1 for var_name_uplift in bayesian_results if var_name_uplift != control_name and bayesian_results[var_name_uplift].get('diff_samples_vs_control') is not None and not np.all(np.isnan(bayesian_results[var_name_uplift].get('diff_samples_vs_control'))))
+        if num_vars_to_plot_bin > 0:
+            cols_diff_plots_bin = st.columns(min(num_vars_to_plot_bin, 3)); col_idx_bin = 0
+            for var_name in ordered_vars_for_display: 
+                if var_name == control_name or var_name not in bayesian_results: continue
+                b_res = bayesian_results[var_name]
+                diff_samples = b_res.get('diff_samples_vs_control')
+                if diff_samples is None or np.all(np.isnan(diff_samples)): continue
+                with cols_diff_plots_bin[col_idx_bin % min(num_vars_to_plot_bin, 3)]:
+                    fig_diff_bin, ax_diff_bin = plt.subplots(); 
+                    ax_diff_bin.hist(diff_samples[~np.isnan(diff_samples)], bins=50, density=True, alpha=0.6, label=f"{var_name} - {control_name}")
+                    ax_diff_bin.axvline(0, color='grey', linestyle='--'); 
+                    ax_diff_bin.axvline(b_res.get('expected_uplift_abs',0), color='red', linestyle=':', label=f"Mean Diff: {b_res.get('expected_uplift_abs',0)*100:.2f}%")
+                    ax_diff_bin.set_title(f"Uplift: {var_name} vs {control_name}"); ax_diff_bin.set_xlabel("Difference in CR"); ax_diff_bin.set_ylabel("Density"); 
+                    ax_diff_bin.legend(); st.pyplot(fig_diff_bin); plt.close(fig_diff_bin)
+                    col_idx_bin +=1
+    st.markdown("""**Interpreting Bayesian Results (Binary - Briefly):** (Full guidance in 'Bayesian Analysis Guidelines' section)
+    - **Posterior Mean CR:** Average CR after data. - **CrI for CR:** Range for true CR. - **P(Better > Control):** Probability variation's true CR is higher. - **Expected Uplift:** Average expected improvement. - **CrI for Uplift:** Range for true uplift. If includes 0, 'no difference' is plausible. - **P(Being Best):** Probability variation has highest true CR.""")
+
+# --- NEW: Helper function for Bayesian Continuous Display ---
+def display_bayesian_continuous_results(bayesian_results, summary_stats_for_ordering, control_name, alpha, outcome_col_name, section_title_prefix="Overall"):
+    if not bayesian_results:
+        st.info(f"{section_title_prefix} Bayesian analysis results for continuous outcomes are not available or could not be computed.")
+        return
+
+    st.markdown(f"---"); st.subheader(f"{section_title_prefix} Bayesian Analysis Results (Continuous Outcome)")
+    st.markdown(f"Using a t-distribution approximation for posteriors. Credible Intervals (CrI) at {100*(1-alpha):.0f}% level.")
+    
+    bayesian_data_disp_cont = []
+    ordered_vars_for_display = summary_stats_for_ordering['Variation'].tolist() if summary_stats_for_ordering is not None else list(bayesian_results.keys())
+
+    for var_name in ordered_vars_for_display:
+        if var_name not in bayesian_results: continue
+        b_res_cont = bayesian_results[var_name]
+        
+        tt_posterior_mean = "The average value of the metric for this variation, based on its posterior distribution (typically very close to the sample mean)."
+        tt_cri_mean = f"The {100*(1-alpha):.0f}% Credible Interval for the true mean of this variation. We are {100*(1-alpha):.0f}% confident the true mean lies here."
+        tt_prob_better = "Probability that this variation's true mean is greater than the control's true mean. Consider with the CrI for Difference."
+        tt_exp_diff = "The average expected absolute difference (Variation Mean - Control Mean)."
+        tt_cri_diff = f"The {100*(1-alpha):.0f}% Credible Interval for the true absolute difference in means. If it includes 0, 'no difference' is plausible."
+        tt_prob_best = "Probability that this variation has the highest true mean among all tested variations."
+
+        post_mean_disp = f"<span title='{tt_posterior_mean}'>{b_res_cont.get('posterior_mean', np.nan):.3f}</span>" if pd.notna(b_res_cont.get('posterior_mean')) else "N/A"
+        mean_ci_disp = f"<span title='{tt_cri_mean}'>[{b_res_cont.get('mean_ci_low', np.nan):.3f}, {b_res_cont.get('mean_ci_high', np.nan):.3f}]</span>" if pd.notna(b_res_cont.get('mean_ci_low')) else "N/A"
+        prob_better_disp = f"<span title='{tt_prob_better}'>{b_res_cont.get('prob_better_than_control', np.nan)*100:.2f}%</span>" if pd.notna(b_res_cont.get('prob_better_than_control')) else ("N/A (Control)" if var_name == control_name else "N/A")
+        exp_diff_disp = f"<span title='{tt_exp_diff}'>{b_res_cont.get('expected_diff_abs', np.nan):.3f}</span>" if pd.notna(b_res_cont.get('expected_diff_abs')) else ("N/A (Control)" if var_name == control_name else "N/A")
+        diff_ci_disp = f"<span title='{tt_cri_diff}'>[{b_res_cont.get('diff_ci_low', np.nan):.3f}, {b_res_cont.get('diff_ci_high', np.nan):.3f}]</span>" if pd.notna(b_res_cont.get('diff_ci_low')) else ("N/A (Control)" if var_name == control_name else "N/A")
+        prob_best_disp = f"<span title='{tt_prob_best}'>{b_res_cont.get('prob_best', np.nan)*100:.2f}%</span>" if pd.notna(b_res_cont.get('prob_best')) else "N/A"
+        
+        bayesian_data_disp_cont.append({
+            "Variation": var_name, "Posterior Mean": post_mean_disp,
+            f"{100*(1-alpha):.0f}% CrI for Mean": mean_ci_disp,
+            "P(Better > Control) (%)": prob_better_disp,
+            "Expected Diff. (abs)": exp_diff_disp,
+            f"{100*(1-alpha):.0f}% CrI for Diff. (abs)": diff_ci_disp,
+            "P(Being Best) (%)": prob_best_disp
+        })
+    if bayesian_data_disp_cont:
+        bayesian_df_cont = pd.DataFrame(bayesian_data_disp_cont)
+        st.markdown(bayesian_df_cont.to_html(escape=False, index=False), unsafe_allow_html=True) 
+
+        st.markdown("##### Key Bayesian Insights (Continuous):")
+        for item in bayesian_data_disp_cont:
+            # ... (Dynamic interpretation captions as before) ...
+            var_name_bayes = item["Variation"]
+            if var_name_bayes == control_name: continue 
+            prob_better_val_str = item["P(Better > Control) (%)"] 
+            prob_better_numeric = np.nan
+            if "N/A" not in prob_better_val_str:
+                try: prob_better_numeric = float(prob_better_val_str.split('>')[1].split('%')[0]) / 100
+                except: pass 
+            cri_diff_str = item[f"{100*(1-alpha):.0f}% CrI for Diff. (abs)"] 
+            cri_diff_contains_zero = "N/A" not in cri_diff_str and "[" in cri_diff_str and "]" in cri_diff_str and \
+                                        float(cri_diff_str.split('[')[1].split(',')[0]) < 0 < float(cri_diff_str.split(',')[1].split(']')[0])
+            expected_diff_val_str = item["Expected Diff. (abs)"]
+            expected_diff_numeric = np.nan
+            if "N/A" not in expected_diff_val_str:
+                try: expected_diff_numeric = float(expected_diff_val_str.split('>')[1].split('<')[0])
+                except: pass
+            
+            if pd.notna(prob_better_numeric):
+                insight = f"For **{var_name_bayes}** vs Control:"
+                if prob_better_numeric > (1 - alpha): 
+                    insight += f" Strong evidence it's better (P(Better) = {prob_better_numeric*100:.1f}%)."
+                elif prob_better_numeric > 0.5:
+                    insight += f" More likely better than not (P(Better) = {prob_better_numeric*100:.1f}%)."
+                else:
+                    insight += f" Less likely to be better (P(Better) = {prob_better_numeric*100:.1f}%)."
+                
+                if pd.notna(expected_diff_numeric):
+                    insight += f" Expected difference is {expected_diff_numeric:.3f}."
+                if "N/A" not in cri_diff_str:
+                    insight += f" The {100*(1-alpha):.0f}% CrI for difference is {cri_diff_str.replace('<span>','').replace('</span>','')}" 
+                    if cri_diff_contains_zero:
+                        insight += ", which includes zero (suggesting the difference may not be practically significant or could be due to chance)."
+                    else:
+                        insight += "."
+                st.caption(insight)
+    
+    # Plots
+    st.markdown("##### Posterior Distributions for Means (Continuous)")
+    fig_mean_cont, ax_mean_cont = plt.subplots()
+    max_density_mean_cont = 0
+    all_mean_samples_for_plot = []
+    for var_name_plot in ordered_vars_for_display:
+        if var_name_plot in bayesian_results:
+            samples = bayesian_results[var_name_plot].get('samples')
+            if samples is not None and samples.size > 0 and not np.all(np.isnan(samples)):
+                all_mean_samples_for_plot.extend(samples[~np.isnan(samples)])
+    
+    if all_mean_samples_for_plot: 
+        x_min_mean_cont, x_max_mean_cont = np.min(all_mean_samples_for_plot), np.max(all_mean_samples_for_plot)
+        padding_mean_cont = (x_max_mean_cont - x_min_mean_cont) * 0.1 if (x_max_mean_cont - x_min_mean_cont) > 0 else 1.0
+        x_range_mean_cont = np.linspace(x_min_mean_cont - padding_mean_cont, x_max_mean_cont + padding_mean_cont, 300)
+
+        for var_name in ordered_vars_for_display:
+            if var_name not in bayesian_results: continue
+            b_res_cont = bayesian_results[var_name]
+            samples = b_res_cont.get('samples')
+            if samples is not None and samples.size > 0 and not np.all(np.isnan(samples)):
+                valid_samples = samples[~np.isnan(samples)]
+                if valid_samples.size > 1: 
+                    kde = gaussian_kde(valid_samples)
+                    pdf_values = kde(x_range_mean_cont)
+                    ax_mean_cont.plot(x_range_mean_cont, pdf_values, label=f"{var_name}")
+                    ax_mean_cont.fill_between(x_range_mean_cont, pdf_values, alpha=0.2)
+                    max_density_mean_cont = max(max_density_mean_cont, np.nanmax(pdf_values))
+                elif valid_samples.size == 1: 
+                    ax_mean_cont.axvline(valid_samples[0], label=f"{var_name} (single data point)", linestyle="--", alpha=0.7)
+        if max_density_mean_cont > 0: ax_mean_cont.set_ylim(0, max_density_mean_cont * 1.1)
+        elif not all_mean_samples_for_plot: pass 
+        else: ax_mean_cont.set_ylim(0,1) 
+        ax_mean_cont.set_title("Posterior Distributions of Means"); ax_mean_cont.set_xlabel(f"Mean of {outcome_col_name}"); 
+        ax_mean_cont.set_ylabel("Density"); ax_mean_cont.legend(); st.pyplot(fig_mean_cont); plt.close(fig_mean_cont)
+    else:
+        st.caption(f"Not enough valid sample data to plot posterior distributions of means for {section_title_prefix.lower()} results.")
+
+    st.markdown("##### Posterior Distribution of Difference (Variation Mean - Control Mean)")
+    num_vars_to_plot_cont_diff = sum(1 for var_name_diff in bayesian_results if var_name_diff != control_name and bayesian_results[var_name_diff].get('diff_samples_vs_control') is not None and not np.all(np.isnan(bayesian_results[var_name_diff].get('diff_samples_vs_control'))))
+    if num_vars_to_plot_cont_diff > 0:
+        cols_diff_plots_cont = st.columns(min(num_vars_to_plot_cont_diff, 2)) 
+        col_idx_cont_diff = 0
+        for var_name in ordered_vars_for_display:
+            if var_name == control_name or var_name not in bayesian_results: continue
+            b_res_cont = bayesian_results[var_name]
+            diff_samples = b_res_cont.get('diff_samples_vs_control')
+            if diff_samples is None or diff_samples.size == 0 or np.all(np.isnan(diff_samples)): continue
+            
+            with cols_diff_plots_cont[col_idx_cont_diff % min(num_vars_to_plot_cont_diff, 2)]:
+                fig_diff_cont, ax_diff_cont = plt.subplots(); 
+                valid_diff_samples_plot = diff_samples[~np.isnan(diff_samples)]
+                if valid_diff_samples_plot.size > 0:
+                    ax_diff_cont.hist(valid_diff_samples_plot, bins=50, density=True, alpha=0.6, label=f"{var_name} - {control_name}")
+                    ax_diff_cont.axvline(0, color='grey', linestyle='--'); 
+                    expected_diff_val = b_res_cont.get('expected_diff_abs', np.nan)
+                    if pd.notna(expected_diff_val):
+                        ax_diff_cont.axvline(expected_diff_val, color='red', linestyle=':', label=f"Mean Diff: {expected_diff_val:.3f}")
+                    ax_diff_cont.set_title(f"Diff: {var_name} vs {control_name}"); 
+                    ax_diff_cont.set_xlabel(f"Difference in Mean of {outcome_col_name}"); ax_diff_cont.set_ylabel("Density"); 
+                    ax_diff_cont.legend(); st.pyplot(fig_diff_cont); plt.close(fig_diff_cont)
+                else:
+                    st.caption(f"Not enough valid difference data to plot for {var_name} vs {control_name} for {section_title_prefix.lower()} results.")
+                col_idx_cont_diff +=1
+    st.markdown("""**Interpreting Bayesian Results (Continuous - Briefly):** (Full guidance in 'Bayesian Analysis Guidelines' section)
+    - **Posterior Mean:** Average value of the metric after data. - **CrI for Mean:** Range for true mean. - **P(Better > Control):** Probability variation's true mean is higher. - **Expected Difference:** Average expected difference from control. - **CrI for Difference:** Range for true difference. If includes 0, 'no difference' is plausible. - **P(Being Best):** Probability variation has highest true mean.""")
 
 
 def show_analyze_results_page():
@@ -662,7 +888,8 @@ def show_analyze_results_page():
     if f'overall_bayesian_results_continuous{cycle_suffix}' not in st.session_state: st.session_state[f'overall_bayesian_results_continuous{cycle_suffix}'] = None 
     if f'metric_col_name{cycle_suffix}' not in st.session_state: st.session_state[f'metric_col_name{cycle_suffix}'] = None
     if f'segmentation_cols{cycle_suffix}' not in st.session_state: st.session_state[f'segmentation_cols{cycle_suffix}'] = [] 
-    if f'segmented_freq_results{cycle_suffix}' not in st.session_state: st.session_state[f'segmented_freq_results{cycle_suffix}'] = {} 
+    if f'segmented_freq_results{cycle_suffix}' not in st.session_state: st.session_state[f'segmented_freq_results{cycle_suffix}'] = {}
+    if f'segmented_bayesian_results{cycle_suffix}' not in st.session_state: st.session_state[f'segmented_bayesian_results{cycle_suffix}'] = {} # NEW for this version
 
     uploaded_file = st.file_uploader("Upload your CSV data file", type=["csv"], key=f"file_uploader{cycle_suffix}")
 
@@ -757,6 +984,7 @@ def show_analyze_results_page():
                 st.session_state[f'overall_bayesian_results_binary{cycle_suffix}'] = None
                 st.session_state[f'overall_bayesian_results_continuous{cycle_suffix}'] = None
                 st.session_state[f'segmented_freq_results{cycle_suffix}'] = {} 
+                st.session_state[f'segmented_bayesian_results{cycle_suffix}'] = {} # Reset segmented Bayesian results
 
                 valid_setup = True
                 var_col_val = st.session_state[f'variation_col_analysis{cycle_suffix}']
@@ -780,11 +1008,10 @@ def show_analyze_results_page():
                 
                 if valid_setup:
                     try:
-                        overall_df_for_analysis = df_val.copy() # Use a copy for modifications
+                        overall_df_for_analysis = df_val.copy() 
                         metric_type = st.session_state[f'metric_type_analysis{cycle_suffix}']
                         alpha = st.session_state[f'alpha_for_analysis{cycle_suffix}']
 
-                        # Prepare overall_df_for_analysis (e.g., __outcome_processed__)
                         if metric_type == 'Binary':
                             success_val_bin = st.session_state[f'success_value_analysis{cycle_suffix}']
                             if pd.isna(success_val_bin): 
@@ -794,11 +1021,9 @@ def show_analyze_results_page():
                             st.session_state[f'metric_col_name{cycle_suffix}'] = 'Metric Value (%)'
                         elif metric_type == 'Continuous':
                             overall_df_for_analysis[out_col_val] = pd.to_numeric(overall_df_for_analysis[out_col_val], errors='coerce')
-                            # Note: display_frequentist_analysis will handle dropping NaNs for its specific calculations
                             st.session_state[f'metric_col_name{cycle_suffix}'] = 'Mean_Value'
                         
-                        # Store overall summary for Bayesian, calculated by display_frequentist_analysis
-                        # This call will also display the overall Frequentist results.
+                        # --- Overall Analysis ---
                         st.markdown("---"); st.subheader(f"Overall Frequentist Analysis Results ({metric_type} Outcome)")
                         overall_summary_stats = display_frequentist_analysis(
                             overall_df_for_analysis, metric_type, out_col_val, var_col_val, control_val, alpha, 
@@ -806,7 +1031,6 @@ def show_analyze_results_page():
                         )
                         st.session_state[f'overall_freq_summary_stats{cycle_suffix}'] = overall_summary_stats
 
-                        # Run Overall Bayesian Analysis
                         if overall_summary_stats is not None:
                             if metric_type == 'Binary':
                                 bayes_bin_res, bayes_bin_err = run_bayesian_binary_analysis(overall_summary_stats, control_val, ci_level=(1-alpha))
@@ -817,7 +1041,7 @@ def show_analyze_results_page():
                                 if bayes_cont_err: st.error(f"Overall Bayesian Continuous Analysis Error: {bayes_cont_err}")
                                 else: st.session_state[f'overall_bayesian_results_continuous{cycle_suffix}'] = bayes_cont_res
                         
-                        st.session_state[f'analysis_done{cycle_suffix}'] = True # Mark overall analysis as done for display trigger
+                        st.session_state[f'analysis_done{cycle_suffix}'] = True 
 
                         # --- Segmentation Logic ---
                         selected_segment_cols = st.session_state.get(f'segmentation_cols{cycle_suffix}', [])
@@ -834,262 +1058,56 @@ def show_analyze_results_page():
                                 if not unique_segments.size:
                                      st.info("No unique segments found based on selected columns.")
                                 else:
-                                    st.info(f"Found {len(unique_segments)} unique segment(s). Performing Frequentist analysis for each.")
+                                    st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
 
                                 for segment_value in unique_segments:
                                     with st.expander(f"Segment: {segment_value}", expanded=False):
                                         st.markdown(f"#### Frequentist Analysis for Segment: {segment_value}")
                                         segment_df = overall_df_for_analysis[overall_df_for_analysis[segment_group_col] == segment_value].copy()
                                         
-                                        # The '__outcome_processed__' column for binary is already in segment_df as it was in overall_df_for_analysis
-                                        # For continuous, outcome_col is already numeric. display_frequentist_analysis handles NaN dropping.
-
                                         segment_summary_stats = display_frequentist_analysis(
                                             segment_df, metric_type, out_col_val, var_col_val, control_val, alpha,
                                             summary_stats_key_suffix=f"_segment_{segment_value.replace(' | ','_')}"
                                         )
-                                        st.session_state[f'segmented_freq_results{cycle_suffix}'][segment_value] = {
-                                            'data': segment_df, # Store segment data if needed later
-                                            'summary_stats': segment_summary_stats # Store summary for this segment
-                                        }
-                                        # Placeholder for Bayesian segmented results
-                                        st.info(f"Bayesian analysis for segment '{segment_value}' will be added in a future step.")
+                                        st.session_state[f'segmented_freq_results{cycle_suffix}'][segment_value] = {'summary_stats': segment_summary_stats}
+                                        
+                                        # Bayesian Analysis for Segment
+                                        if segment_summary_stats is not None and not segment_summary_stats.empty:
+                                            if metric_type == 'Binary':
+                                                seg_bayes_bin_res, seg_bayes_bin_err = run_bayesian_binary_analysis(segment_summary_stats, control_val, ci_level=(1-alpha))
+                                                if seg_bayes_bin_err: st.error(f"Segment '{segment_value}' Bayesian Binary Analysis Error: {seg_bayes_bin_err}")
+                                                else: 
+                                                    st.session_state[f'segmented_bayesian_results{cycle_suffix}'][segment_value] = seg_bayes_bin_res
+                                                    display_bayesian_binary_results(seg_bayes_bin_res, segment_summary_stats, control_val, alpha, section_title_prefix=f"Segment '{segment_value}'")
+                                            elif metric_type == 'Continuous':
+                                                seg_bayes_cont_res, seg_bayes_cont_err = run_bayesian_continuous_analysis(segment_summary_stats, control_val, ci_level=(1-alpha))
+                                                if seg_bayes_cont_err: st.error(f"Segment '{segment_value}' Bayesian Continuous Analysis Error: {seg_bayes_cont_err}")
+                                                else:
+                                                    st.session_state[f'segmented_bayesian_results{cycle_suffix}'][segment_value] = seg_bayes_cont_res
+                                                    display_bayesian_continuous_results(seg_bayes_cont_res, segment_summary_stats, control_val, alpha, out_col_val, section_title_prefix=f"Segment '{segment_value}'")
+                                        else:
+                                            st.warning(f"Skipping Bayesian analysis for segment '{segment_value}' due to lack of valid summary statistics.")
                         else:
                              st.session_state[f'segmented_freq_results{cycle_suffix}'] = {} 
+                             st.session_state[f'segmented_bayesian_results{cycle_suffix}'] = {}
                     except Exception as e: st.error(f"An error occurred during analysis setup or execution: {e}"); st.exception(e)
         except Exception as e: st.error(f"Error reading/processing CSV: {e}"); st.exception(e)
     else: st.info("Upload a CSV file to begin analysis.")
 
     # --- Display Overall Bayesian Results (after Frequentist, if analysis_done) ---
-    if st.session_state[f'analysis_done{cycle_suffix}']:
+    if st.session_state[f'analysis_done{cycle_suffix}'] and not st.session_state.get(f'segmentation_cols{cycle_suffix}', []): # Only show if no segmentation or after overall freq
         alpha_display = st.session_state[f'alpha_for_analysis{cycle_suffix}']
         metric_type_display = st.session_state[f'metric_type_analysis{cycle_suffix}']
-        # overall_summary_stats_display = st.session_state[f'overall_freq_summary_stats{cycle_suffix}'] # Already available
+        overall_summary_stats_for_bayes_ordering = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}')
         control_name_display = st.session_state[f'control_group_name_analysis{cycle_suffix}']
         outcome_col_display = st.session_state[f'outcome_col_analysis{cycle_suffix}']
-        
-        # Retrieve overall summary stats for Bayesian display ordering
-        overall_summary_stats_for_bayes_ordering = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}')
-
 
         if metric_type_display == 'Binary':
-            st.markdown("---"); st.subheader(f"Overall Bayesian Analysis Results (Binary Outcome)")
             bayesian_results_to_display = st.session_state.get(f'overall_bayesian_results_binary{cycle_suffix}')
-            if bayesian_results_to_display and overall_summary_stats_for_bayes_ordering is not None:
-                st.markdown(f"Using a Beta(1,1) uninformative prior. Credible Intervals (CrI) at {100*(1-alpha_display):.0f}% level.")
-                bayesian_data_disp_bin = [];
-                ordered_vars_for_bayes_display = overall_summary_stats_for_bayes_ordering['Variation'].tolist()
-
-                for var_name in ordered_vars_for_bayes_display:
-                    if var_name not in bayesian_results_to_display: continue 
-                    b_res = bayesian_results_to_display[var_name]
-                    prob_better_html = f"<span title=\"Probability that this variation's true conversion rate is higher than the control's. Also consider the Credible Interval for Uplift to understand magnitude and uncertainty.\">{b_res.get('prob_better_than_control',0)*100:.2f}%</span>" if b_res.get('prob_better_than_control') is not None else "N/A (Control)"
-                    cri_uplift_html = f"<span title=\"The range where the true uplift over control likely lies. If this interval includes 0, 'no difference' or a negative effect are plausible.\">[{b_res.get('uplift_ci_low', 0)*100:.2f}, {b_res.get('uplift_ci_high', 0)*100:.2f}]</span>" if b_res.get('uplift_ci_low') is not None else "N/A (Control)"
-                    bayesian_data_disp_bin.append({
-                        "Variation": var_name, "Posterior Mean CR (%)": f"{b_res.get('mean_cr',0)*100:.2f}", 
-                        f"{100*(1-alpha_display):.0f}% CrI for CR (%)": f"[{b_res.get('cr_ci_low',0)*100:.2f}, {b_res.get('cr_ci_high',0)*100:.2f}]", 
-                        "P(Better > Control) (%)": prob_better_html, 
-                        "Expected Uplift (abs %)": f"{b_res.get('expected_uplift_abs', 0)*100:.2f}" if b_res.get('expected_uplift_abs') is not None else "N/A (Control)", 
-                        f"{100*(1-alpha_display):.0f}% CrI for Uplift (abs %)": cri_uplift_html, 
-                        "P(Being Best) (%)": f"{b_res.get('prob_best',0)*100:.2f}"
-                    })
-                if bayesian_data_disp_bin:
-                    bayesian_df_bin = pd.DataFrame(bayesian_data_disp_bin); st.markdown(bayesian_df_bin.to_html(escape=False, index=False), unsafe_allow_html=True)
-                
-                # ... (Binary Bayesian Plots, ensure they use overall_summary_stats_for_bayes_ordering for x-axis limits if needed)
-                if overall_summary_stats_for_bayes_ordering is not None and 'Metric Value (%)' in overall_summary_stats_for_bayes_ordering.columns:
-                    st.markdown("##### Posterior Distributions for Conversion Rates (Binary)"); fig_cr_bin, ax_cr_bin = plt.subplots()
-                    observed_max_cr_for_plot = 0.0
-                    numeric_crs_bin = pd.to_numeric(overall_summary_stats_for_bayes_ordering['Metric Value (%)'], errors='coerce')
-                    if not numeric_crs_bin.empty and numeric_crs_bin.notna().any(): observed_max_cr_for_plot = numeric_crs_bin.max() / 100.0
-                    else: observed_max_cr_for_plot = 0.1 
-                    posterior_max_cr_for_plot_bin = 0.0
-                    all_posterior_highs_bin = [res.get('cr_ci_high') for res in bayesian_results_to_display.values() if res.get('cr_ci_high') is not None]
-                    if all_posterior_highs_bin: posterior_max_cr_for_plot_bin = max(all_posterior_highs_bin)
-                    final_x_limit_candidate_bin = max(observed_max_cr_for_plot, posterior_max_cr_for_plot_bin)
-                    x_cr_plot_limit_bin = min(1.0, final_x_limit_candidate_bin + 0.05) 
-                    if x_cr_plot_limit_bin <= 0.01: x_cr_plot_limit_bin = 0.1 
-                    x_cr_range_bin = np.linspace(0, x_cr_plot_limit_bin, 300)
-                    max_density_bin = 0
-                    for var_name in ordered_vars_for_bayes_display: 
-                        if var_name not in bayesian_results_to_display: continue
-                        b_res = bayesian_results_to_display[var_name]
-                        alpha_p, beta_p = b_res.get('alpha_post', 1), b_res.get('beta_post', 1)
-                        if alpha_p > 0 and beta_p > 0: 
-                            posterior_pdf = beta_dist.pdf(x_cr_range_bin, alpha_p, beta_p)
-                            ax_cr_bin.plot(x_cr_range_bin, posterior_pdf, label=f"{var_name} (α={alpha_p:.1f},β={beta_p:.1f})")
-                            ax_cr_bin.fill_between(x_cr_range_bin, posterior_pdf, alpha=0.2)
-                            if posterior_pdf is not None and np.any(np.isfinite(posterior_pdf)): 
-                                finite_pdf = posterior_pdf[np.isfinite(posterior_pdf)]
-                                if finite_pdf.size > 0: max_density_bin = max(max_density_bin, np.nanmax(finite_pdf))
-                    if max_density_bin > 0: ax_cr_bin.set_ylim(0, max_density_bin * 1.1)
-                    else: ax_cr_bin.set_ylim(0,1)
-                    ax_cr_bin.set_title("Posterior Distributions of CRs"); ax_cr_bin.set_xlabel("Conversion Rate"); ax_cr_bin.set_ylabel("Density"); ax_cr_bin.legend(); st.pyplot(fig_cr_bin); plt.close(fig_cr_bin)
-
-                    st.markdown("##### Posterior Distribution of Uplift (Variation CR - Control CR)")
-                    num_vars_to_plot_bin = sum(1 for var_name_uplift in bayesian_results_to_display if var_name_uplift != control_name_display and bayesian_results_to_display[var_name_uplift].get('diff_samples_vs_control') is not None and var_name_uplift in overall_summary_stats_for_bayes_ordering['Variation'].values)
-                    if num_vars_to_plot_bin > 0:
-                        cols_diff_plots_bin = st.columns(min(num_vars_to_plot_bin, 3)); col_idx_bin = 0
-                        for var_name in ordered_vars_for_bayes_display: 
-                            if var_name == control_name_display or var_name not in bayesian_results_to_display: continue
-                            b_res = bayesian_results_to_display[var_name]
-                            if b_res.get('diff_samples_vs_control') is None: continue
-                            with cols_diff_plots_bin[col_idx_bin % min(num_vars_to_plot_bin, 3)]:
-                                fig_diff_bin, ax_diff_bin = plt.subplots(); 
-                                ax_diff_bin.hist(b_res['diff_samples_vs_control'], bins=50, density=True, alpha=0.6, label=f"{var_name} - {control_name_display}")
-                                ax_diff_bin.axvline(0, color='grey', linestyle='--'); 
-                                ax_diff_bin.axvline(b_res.get('expected_uplift_abs',0), color='red', linestyle=':', label=f"Mean Diff: {b_res.get('expected_uplift_abs',0)*100:.2f}%")
-                                ax_diff_bin.set_title(f"Uplift: {var_name} vs {control_name_display}"); ax_diff_bin.set_xlabel("Difference in CR"); ax_diff_bin.set_ylabel("Density"); 
-                                ax_diff_bin.legend(); st.pyplot(fig_diff_bin); plt.close(fig_diff_bin)
-                                col_idx_bin +=1
-                st.markdown("""**Interpreting Bayesian Results (Binary - Briefly):** (Full guidance in 'Bayesian Analysis Guidelines' section)
-                - **Posterior Mean CR:** Average CR after data. - **CrI for CR:** Range for true CR. - **P(Better > Control):** Probability variation's true CR is higher. - **Expected Uplift:** Average expected improvement. - **CrI for Uplift:** Range for true uplift. If includes 0, 'no difference' is plausible. - **P(Being Best):** Probability variation has highest true CR.""")
-
-            else: st.info("Overall Bayesian analysis results for binary outcomes are not available or could not be computed.")
-
+            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_bayes_ordering, control_name_display, alpha_display, section_title_prefix="Overall")
         elif metric_type_display == 'Continuous':
-            st.markdown("---"); st.subheader(f"Overall Bayesian Analysis Results (Continuous Outcome)")
             bayesian_results_to_display_cont = st.session_state.get(f'overall_bayesian_results_continuous{cycle_suffix}')
-            if bayesian_results_to_display_cont and overall_summary_stats_for_bayes_ordering is not None:
-                st.markdown(f"Using a t-distribution approximation for posteriors. Credible Intervals (CrI) at {100*(1-alpha_display):.0f}% level.")
-                bayesian_data_disp_cont = []; 
-                ordered_vars_for_bayes_display_cont = overall_summary_stats_for_bayes_ordering['Variation'].tolist()
-
-                for var_name in ordered_vars_for_bayes_display_cont:
-                    if var_name not in bayesian_results_to_display_cont: continue
-                    b_res_cont = bayesian_results_to_display_cont[var_name]
-                    
-                    tt_posterior_mean = "The average value of the metric for this variation, based on its posterior distribution (typically very close to the sample mean)."
-                    tt_cri_mean = f"The {100*(1-alpha_display):.0f}% Credible Interval for the true mean of this variation. We are {100*(1-alpha_display):.0f}% confident the true mean lies here."
-                    tt_prob_better = "Probability that this variation's true mean is greater than the control's true mean. Consider with the CrI for Difference."
-                    tt_exp_diff = "The average expected absolute difference (Variation Mean - Control Mean)."
-                    tt_cri_diff = f"The {100*(1-alpha_display):.0f}% Credible Interval for the true absolute difference in means. If it includes 0, 'no difference' is plausible."
-                    tt_prob_best = "Probability that this variation has the highest true mean among all tested variations."
-
-                    post_mean_disp = f"<span title='{tt_posterior_mean}'>{b_res_cont.get('posterior_mean', np.nan):.3f}</span>" if pd.notna(b_res_cont.get('posterior_mean')) else "N/A"
-                    mean_ci_disp = f"<span title='{tt_cri_mean}'>[{b_res_cont.get('mean_ci_low', np.nan):.3f}, {b_res_cont.get('mean_ci_high', np.nan):.3f}]</span>" if pd.notna(b_res_cont.get('mean_ci_low')) else "N/A"
-                    prob_better_disp = f"<span title='{tt_prob_better}'>{b_res_cont.get('prob_better_than_control', np.nan)*100:.2f}%</span>" if pd.notna(b_res_cont.get('prob_better_than_control')) else ("N/A (Control)" if var_name == control_name_display else "N/A")
-                    exp_diff_disp = f"<span title='{tt_exp_diff}'>{b_res_cont.get('expected_diff_abs', np.nan):.3f}</span>" if pd.notna(b_res_cont.get('expected_diff_abs')) else ("N/A (Control)" if var_name == control_name_display else "N/A")
-                    diff_ci_disp = f"<span title='{tt_cri_diff}'>[{b_res_cont.get('diff_ci_low', np.nan):.3f}, {b_res_cont.get('diff_ci_high', np.nan):.3f}]</span>" if pd.notna(b_res_cont.get('diff_ci_low')) else ("N/A (Control)" if var_name == control_name_display else "N/A")
-                    prob_best_disp = f"<span title='{tt_prob_best}'>{b_res_cont.get('prob_best', np.nan)*100:.2f}%</span>" if pd.notna(b_res_cont.get('prob_best')) else "N/A"
-                    
-                    bayesian_data_disp_cont.append({
-                        "Variation": var_name, "Posterior Mean": post_mean_disp,
-                        f"{100*(1-alpha_display):.0f}% CrI for Mean": mean_ci_disp,
-                        "P(Better > Control) (%)": prob_better_disp,
-                        "Expected Diff. (abs)": exp_diff_disp,
-                        f"{100*(1-alpha_display):.0f}% CrI for Diff. (abs)": diff_ci_disp,
-                        "P(Being Best) (%)": prob_best_disp
-                    })
-                if bayesian_data_disp_cont:
-                    bayesian_df_cont = pd.DataFrame(bayesian_data_disp_cont)
-                    st.markdown(bayesian_df_cont.to_html(escape=False, index=False), unsafe_allow_html=True) 
-
-                    st.markdown("##### Key Bayesian Insights (Continuous):")
-                    for item in bayesian_data_disp_cont:
-                        var_name_bayes = item["Variation"]
-                        if var_name_bayes == control_name_display: continue 
-                        prob_better_val_str = item["P(Better > Control) (%)"] 
-                        prob_better_numeric = np.nan
-                        if "N/A" not in prob_better_val_str:
-                            try: prob_better_numeric = float(prob_better_val_str.split('>')[1].split('%')[0]) / 100
-                            except: pass 
-                        cri_diff_str = item[f"{100*(1-alpha_display):.0f}% CrI for Diff. (abs)"] 
-                        cri_diff_contains_zero = "N/A" not in cri_diff_str and "[" in cri_diff_str and "]" in cri_diff_str and \
-                                                 float(cri_diff_str.split('[')[1].split(',')[0]) < 0 < float(cri_diff_str.split(',')[1].split(']')[0])
-                        expected_diff_val_str = item["Expected Diff. (abs)"]
-                        expected_diff_numeric = np.nan
-                        if "N/A" not in expected_diff_val_str:
-                            try: expected_diff_numeric = float(expected_diff_val_str.split('>')[1].split('<')[0])
-                            except: pass
-                        
-                        if pd.notna(prob_better_numeric):
-                            insight = f"For **{var_name_bayes}** vs Control:"
-                            if prob_better_numeric > (1 - alpha_display): 
-                                insight += f" Strong evidence it's better (P(Better) = {prob_better_numeric*100:.1f}%)."
-                            elif prob_better_numeric > 0.5:
-                                insight += f" More likely better than not (P(Better) = {prob_better_numeric*100:.1f}%)."
-                            else:
-                                insight += f" Less likely to be better (P(Better) = {prob_better_numeric*100:.1f}%)."
-                            
-                            if pd.notna(expected_diff_numeric):
-                                insight += f" Expected difference is {expected_diff_numeric:.3f}."
-                            if "N/A" not in cri_diff_str:
-                                insight += f" The {100*(1-alpha_display):.0f}% CrI for difference is {cri_diff_str.replace('<span>','').replace('</span>','')}" 
-                                if cri_diff_contains_zero:
-                                    insight += ", which includes zero (suggesting the difference may not be practically significant or could be due to chance)."
-                                else:
-                                    insight += "."
-                            st.caption(insight)
-                
-                # ... (Continuous Bayesian Plots for overall)
-                st.markdown("##### Posterior Distributions for Means (Continuous)")
-                fig_mean_cont, ax_mean_cont = plt.subplots()
-                max_density_mean_cont = 0
-                all_mean_samples_for_plot = []
-                for var_name_plot in ordered_vars_for_bayes_display_cont:
-                    if var_name_plot in bayesian_results_to_display_cont:
-                        samples = bayesian_results_to_display_cont[var_name_plot].get('samples')
-                        if samples is not None and samples.size > 0 and not np.all(np.isnan(samples)):
-                            all_mean_samples_for_plot.extend(samples[~np.isnan(samples)])
-                
-                if all_mean_samples_for_plot: 
-                    x_min_mean_cont, x_max_mean_cont = np.min(all_mean_samples_for_plot), np.max(all_mean_samples_for_plot)
-                    padding_mean_cont = (x_max_mean_cont - x_min_mean_cont) * 0.1 if (x_max_mean_cont - x_min_mean_cont) > 0 else 1.0
-                    x_range_mean_cont = np.linspace(x_min_mean_cont - padding_mean_cont, x_max_mean_cont + padding_mean_cont, 300)
-
-                    for var_name in ordered_vars_for_bayes_display_cont:
-                        if var_name not in bayesian_results_to_display_cont: continue
-                        b_res_cont = bayesian_results_to_display_cont[var_name]
-                        samples = b_res_cont.get('samples')
-                        if samples is not None and samples.size > 0 and not np.all(np.isnan(samples)):
-                            valid_samples = samples[~np.isnan(samples)]
-                            if valid_samples.size > 1: 
-                                kde = gaussian_kde(valid_samples)
-                                pdf_values = kde(x_range_mean_cont)
-                                ax_mean_cont.plot(x_range_mean_cont, pdf_values, label=f"{var_name}")
-                                ax_mean_cont.fill_between(x_range_mean_cont, pdf_values, alpha=0.2)
-                                max_density_mean_cont = max(max_density_mean_cont, np.nanmax(pdf_values))
-                            elif valid_samples.size == 1: 
-                                ax_mean_cont.axvline(valid_samples[0], label=f"{var_name} (single data point)", linestyle="--", alpha=0.7)
-                    if max_density_mean_cont > 0: ax_mean_cont.set_ylim(0, max_density_mean_cont * 1.1)
-                    elif not all_mean_samples_for_plot: pass 
-                    else: ax_mean_cont.set_ylim(0,1) 
-                    ax_mean_cont.set_title("Posterior Distributions of Means"); ax_mean_cont.set_xlabel(f"Mean of {outcome_col_display}"); 
-                    ax_mean_cont.set_ylabel("Density"); ax_mean_cont.legend(); st.pyplot(fig_mean_cont); plt.close(fig_mean_cont)
-                else:
-                    st.caption("Not enough valid sample data to plot posterior distributions of means.")
-
-                st.markdown("##### Posterior Distribution of Difference (Variation Mean - Control Mean)")
-                num_vars_to_plot_cont_diff = sum(1 for var_name_diff in bayesian_results_to_display_cont if var_name_diff != control_name_display and bayesian_results_to_display_cont[var_name_diff].get('diff_samples_vs_control') is not None and not np.all(np.isnan(bayesian_results_to_display_cont[var_name_diff].get('diff_samples_vs_control'))))
-                if num_vars_to_plot_cont_diff > 0:
-                    cols_diff_plots_cont = st.columns(min(num_vars_to_plot_cont_diff, 2)) 
-                    col_idx_cont_diff = 0
-                    for var_name in ordered_vars_for_bayes_display_cont:
-                        if var_name == control_name_display or var_name not in bayesian_results_to_display_cont: continue
-                        b_res_cont = bayesian_results_to_display_cont[var_name]
-                        diff_samples = b_res_cont.get('diff_samples_vs_control')
-                        if diff_samples is None or diff_samples.size == 0 or np.all(np.isnan(diff_samples)): continue
-                        
-                        with cols_diff_plots_cont[col_idx_cont_diff % min(num_vars_to_plot_cont_diff, 2)]:
-                            fig_diff_cont, ax_diff_cont = plt.subplots(); 
-                            valid_diff_samples_plot = diff_samples[~np.isnan(diff_samples)]
-                            if valid_diff_samples_plot.size > 0:
-                                ax_diff_cont.hist(valid_diff_samples_plot, bins=50, density=True, alpha=0.6, label=f"{var_name} - {control_name_display}")
-                                ax_diff_cont.axvline(0, color='grey', linestyle='--'); 
-                                expected_diff_val = b_res_cont.get('expected_diff_abs', np.nan)
-                                if pd.notna(expected_diff_val):
-                                    ax_diff_cont.axvline(expected_diff_val, color='red', linestyle=':', label=f"Mean Diff: {expected_diff_val:.3f}")
-                                ax_diff_cont.set_title(f"Diff: {var_name} vs {control_name_display}"); 
-                                ax_diff_cont.set_xlabel(f"Difference in Mean of {outcome_col_display}"); ax_diff_cont.set_ylabel("Density"); 
-                                ax_diff_cont.legend(); st.pyplot(fig_diff_cont); plt.close(fig_diff_cont)
-                            else:
-                                st.caption(f"Not enough valid difference data to plot for {var_name} vs {control_name_display}.")
-                            col_idx_cont_diff +=1
-                st.markdown("""**Interpreting Bayesian Results (Continuous - Briefly):** (Full guidance in 'Bayesian Analysis Guidelines' section)
-                - **Posterior Mean:** Average value of the metric after data. - **CrI for Mean:** Range for true mean. - **P(Better > Control):** Probability variation's true mean is higher. - **Expected Difference:** Average expected difference from control. - **CrI for Difference:** Range for true difference. If includes 0, 'no difference' is plausible. - **P(Being Best):** Probability variation has highest true mean.""")
-
-            else: st.info("Overall Bayesian analysis results for continuous outcomes are not available or could not be computed.")
+            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_bayes_ordering, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
     
     st.markdown("---")
     st.info("Full segmented Bayesian analysis and detailed interpretation guidance are planned for future updates!")
@@ -1239,4 +1257,4 @@ else:
 
 
 st.sidebar.markdown("---")
-st.sidebar.info("A/B Testing Guide & Analyzer | V0.8.1 (Cycle 8 - Segmented Frequentist)")
+st.sidebar.info("A/B Testing Guide & Analyzer | V0.8.2 (Cycle 8 - Segmented Bayesian)")
