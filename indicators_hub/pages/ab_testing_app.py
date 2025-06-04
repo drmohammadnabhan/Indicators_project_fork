@@ -62,7 +62,7 @@ def calculate_continuous_sample_size(baseline_mean, std_dev, mde_abs_mean, power
 def run_bayesian_binary_analysis(summary_stats, control_group_name, prior_alpha=1, prior_beta=1, n_samples=10000, ci_level=0.95):
     # Performs Bayesian analysis for binary outcomes using a Beta-Binomial model.
     results = {}; posterior_params = {}
-    if summary_stats is None or summary_stats.empty:
+    if summary_stats is None or summary_stats.empty: # Check if summary_stats is None or empty
         return None, "Summary statistics are empty or None for Bayesian binary analysis."
     if 'Variation' not in summary_stats.columns:
         original_var_col_name = summary_stats.columns[0] 
@@ -199,7 +199,7 @@ def run_bayesian_continuous_analysis(summary_stats, control_group_name, n_sample
             ci_low_val = sample_mean
             ci_high_val = sample_mean
         else: 
-            df_t_dist = n - 1 # Renamed to avoid conflict with pandas df
+            df_t_dist = n - 1 
             std_err = sample_std_dev / np.sqrt(n)
             t_samples = t_dist.rvs(df_t_dist, size=n_samples)
             current_samples = sample_mean + (std_err * t_samples)
@@ -657,7 +657,6 @@ def display_bayesian_binary_results(bayesian_results, summary_stats_for_ordering
         prob_better_html = f"<span title=\"Probability that this variation's true conversion rate is higher than the control's. Also consider the Credible Interval for Uplift to understand magnitude and uncertainty.\">{b_res.get('prob_better_than_control',np.nan)*100:.2f}%</span>" if pd.notna(b_res.get('prob_better_than_control')) else ("N/A (Control)" if var_name == control_name else "N/A")
         cri_uplift_html = f"<span title=\"The range where the true uplift over control likely lies. If this interval includes 0, 'no difference' or a negative effect are plausible.\">[{b_res.get('uplift_ci_low', np.nan)*100:.2f}, {b_res.get('uplift_ci_high', np.nan)*100:.2f}]</span>" if pd.notna(b_res.get('uplift_ci_low')) else ("N/A (Control)" if var_name == control_name else "N/A")
         
-        # Ensure formatting handles potential NaNs from calculations
         mean_cr_disp = f"{b_res.get('mean_cr',np.nan)*100:.2f}" if pd.notna(b_res.get('mean_cr')) else "N/A"
         cr_ci_low_disp = f"{b_res.get('cr_ci_low',np.nan)*100:.2f}" if pd.notna(b_res.get('cr_ci_low')) else "N/A"
         cr_ci_high_disp = f"{b_res.get('cr_ci_high',np.nan)*100:.2f}" if pd.notna(b_res.get('cr_ci_high')) else "N/A"
@@ -1014,7 +1013,9 @@ def show_analyze_results_page():
                         overall_df_for_analysis = df_val.copy() 
                         metric_type = st.session_state[f'metric_type_analysis{cycle_suffix}']
                         alpha = st.session_state[f'alpha_for_analysis{cycle_suffix}']
-
+                        
+                        # --- Overall Analysis Calculation (Moved here, before display loop) ---
+                        overall_summary_stats_calc = None
                         if metric_type == 'Binary':
                             success_val_bin = st.session_state[f'success_value_analysis{cycle_suffix}']
                             if pd.isna(success_val_bin): 
@@ -1022,39 +1023,42 @@ def show_analyze_results_page():
                             else: 
                                 overall_df_for_analysis['__outcome_processed__'] = (overall_df_for_analysis[out_col_val] == success_val_bin).astype(int)
                             st.session_state[f'metric_col_name{cycle_suffix}'] = 'Metric Value (%)'
+                            
+                            overall_summary_stats_calc = overall_df_for_analysis.groupby(var_col_val).agg(Users=('__outcome_processed__', 'count'),Conversions=('__outcome_processed__', 'sum')).reset_index()
+                            overall_summary_stats_calc.rename(columns={var_col_val: 'Variation'}, inplace=True)
+                            if not overall_summary_stats_calc.empty and overall_summary_stats_calc['Users'].sum() > 0:
+                                overall_summary_stats_calc['Metric Value (%)'] = (overall_summary_stats_calc['Conversions'] / overall_summary_stats_calc['Users'].replace(0, np.nan) * 100).round(2)
+                            else: overall_summary_stats_calc = None 
+                        
                         elif metric_type == 'Continuous':
                             overall_df_for_analysis[out_col_val] = pd.to_numeric(overall_df_for_analysis[out_col_val], errors='coerce')
                             st.session_state[f'metric_col_name{cycle_suffix}'] = 'Mean_Value'
-                        
-                        # --- Overall Analysis Calculation ---
-                        # Frequentist summary is calculated first as Bayesian might depend on it
-                        temp_overall_summary_stats = None
-                        if metric_type == 'Binary':
-                            temp_overall_summary_stats = overall_df_for_analysis.groupby(var_col_val).agg(Users=('__outcome_processed__', 'count'),Conversions=('__outcome_processed__', 'sum')).reset_index()
-                            temp_overall_summary_stats.rename(columns={var_col_val: 'Variation'}, inplace=True)
-                        elif metric_type == 'Continuous':
-                            cleaned_overall_df = overall_df_for_analysis.dropna(subset=[out_col_val])
-                            if not cleaned_overall_df.empty:
-                                temp_overall_summary_stats = cleaned_overall_df.groupby(var_col_val).agg(Users=(out_col_val, 'count'), Mean_Value=(out_col_val, 'mean'), Std_Dev=(out_col_val, 'std'), Median_Value=(out_col_val,'median'), Std_Err=(out_col_val, lambda x: x.std(ddof=1) / np.sqrt(x.count()) if x.count() > 0 and pd.notna(x.std(ddof=1)) else np.nan)).reset_index()
-                                temp_overall_summary_stats.rename(columns={var_col_val: 'Variation'}, inplace=True)
-                                for col_to_round in ['Mean_Value', 'Std_Dev', 'Median_Value', 'Std_Err']:
-                                     if col_to_round in temp_overall_summary_stats.columns: temp_overall_summary_stats[col_to_round] = temp_overall_summary_stats[col_to_round].round(3)
-                        
-                        st.session_state[f'overall_freq_summary_stats{cycle_suffix}'] = temp_overall_summary_stats # Store it
+                            cleaned_overall_df_calc = overall_df_for_analysis.dropna(subset=[out_col_val])
+                            if not cleaned_overall_df_calc.empty:
+                                overall_summary_stats_calc = cleaned_overall_df_calc.groupby(var_col_val).agg(Users=(out_col_val, 'count'), Mean_Value=(out_col_val, 'mean'), Std_Dev=(out_col_val, 'std'), Median_Value=(out_col_val,'median'), Std_Err=(out_col_val, lambda x: x.std(ddof=1) / np.sqrt(x.count()) if x.count() > 0 and pd.notna(x.std(ddof=1)) else np.nan)).reset_index()
+                                overall_summary_stats_calc.rename(columns={var_col_val: 'Variation'}, inplace=True)
+                                if overall_summary_stats_calc['Users'].sum() == 0: overall_summary_stats_calc = None 
+                                else:
+                                    for col_to_round in ['Mean_Value', 'Std_Dev', 'Median_Value', 'Std_Err']:
+                                         if col_to_round in overall_summary_stats_calc.columns: overall_summary_stats_calc[col_to_round] = overall_summary_stats_calc[col_to_round].round(3)
+                            else: overall_summary_stats_calc = None 
 
-                        if temp_overall_summary_stats is not None and not temp_overall_summary_stats.empty:
+                        st.session_state[f'overall_freq_summary_stats{cycle_suffix}'] = overall_summary_stats_calc
+
+                        # Run Overall Bayesian Analysis
+                        if overall_summary_stats_calc is not None:
                             if metric_type == 'Binary':
-                                bayes_bin_res, bayes_bin_err = run_bayesian_binary_analysis(temp_overall_summary_stats, control_val, ci_level=(1-alpha))
+                                bayes_bin_res, bayes_bin_err = run_bayesian_binary_analysis(overall_summary_stats_calc, control_val, ci_level=(1-alpha))
                                 if bayes_bin_err: st.error(f"Overall Bayesian Binary Analysis Error: {bayes_bin_err}")
                                 st.session_state[f'overall_bayesian_results_binary{cycle_suffix}'] = bayes_bin_res
                             elif metric_type == 'Continuous':
-                                bayes_cont_res, bayes_cont_err = run_bayesian_continuous_analysis(temp_overall_summary_stats, control_val, ci_level=(1-alpha))
+                                bayes_cont_res, bayes_cont_err = run_bayesian_continuous_analysis(overall_summary_stats_calc, control_val, ci_level=(1-alpha))
                                 if bayes_cont_err: st.error(f"Overall Bayesian Continuous Analysis Error: {bayes_cont_err}")
                                 st.session_state[f'overall_bayesian_results_continuous{cycle_suffix}'] = bayes_cont_res
                         
                         st.session_state[f'analysis_done{cycle_suffix}'] = True 
 
-                        # --- Segmentation Logic ---
+                        # --- Segmentation Logic (Calculations) ---
                         selected_segment_cols = st.session_state.get(f'segmentation_cols{cycle_suffix}', [])
                         if selected_segment_cols:
                             segment_group_col = '__segment_group__'
@@ -1066,34 +1070,35 @@ def show_analyze_results_page():
                                 unique_segments = overall_df_for_analysis[segment_group_col].unique()
                                 
                                 if not unique_segments.size:
-                                     st.info("No unique segments found based on selected columns.")
+                                     st.info("No unique segments found based on selected columns for segmentation.")
                                 else:
                                     st.info(f"Found {len(unique_segments)} unique segment(s). Performing analysis for each.")
 
                                 for segment_value in unique_segments:
                                     segment_df = overall_df_for_analysis[overall_df_for_analysis[segment_group_col] == segment_value].copy()
                                     
-                                    # Calculate summary stats for the segment (needed for both Freq and Bayes display)
-                                    segment_summary_stats = None
+                                    segment_summary_stats = None # Initialize for this segment
                                     if metric_type == 'Binary':
-                                        # __outcome_processed__ should already be in segment_df
-                                        if '__outcome_processed__' in segment_df.columns:
+                                        if '__outcome_processed__' in segment_df.columns: # Should be inherited
                                             segment_summary_stats = segment_df.groupby(var_col_val).agg(Users=('__outcome_processed__', 'count'),Conversions=('__outcome_processed__', 'sum')).reset_index()
                                             segment_summary_stats.rename(columns={var_col_val: 'Variation'}, inplace=True)
-                                            if not segment_summary_stats.empty:
+                                            if not segment_summary_stats.empty and segment_summary_stats['Users'].sum() > 0:
                                                 segment_summary_stats['Metric Value (%)'] = (segment_summary_stats['Conversions'] / segment_summary_stats['Users'].replace(0, np.nan) * 100).round(2)
+                                            else: segment_summary_stats = None
                                     elif metric_type == 'Continuous':
-                                        cleaned_segment_df = segment_df.dropna(subset=[out_col_val])
+                                        cleaned_segment_df = segment_df.dropna(subset=[out_col_val]) # Clean again for this specific segment
                                         if not cleaned_segment_df.empty:
                                             segment_summary_stats = cleaned_segment_df.groupby(var_col_val).agg(Users=(out_col_val, 'count'), Mean_Value=(out_col_val, 'mean'), Std_Dev=(out_col_val, 'std'), Median_Value=(out_col_val,'median'), Std_Err=(out_col_val, lambda x: x.std(ddof=1) / np.sqrt(x.count()) if x.count() > 0 and pd.notna(x.std(ddof=1)) else np.nan)).reset_index()
                                             segment_summary_stats.rename(columns={var_col_val: 'Variation'}, inplace=True)
-                                            for col_to_round_seg in ['Mean_Value', 'Std_Dev', 'Median_Value', 'Std_Err']:
-                                                if col_to_round_seg in segment_summary_stats.columns: segment_summary_stats[col_to_round_seg] = segment_summary_stats[col_to_round_seg].round(3)
+                                            if segment_summary_stats['Users'].sum() == 0: segment_summary_stats = None
+                                            else:
+                                                for col_to_round_seg in ['Mean_Value', 'Std_Dev', 'Median_Value', 'Std_Err']:
+                                                    if col_to_round_seg in segment_summary_stats.columns: segment_summary_stats[col_to_round_seg] = segment_summary_stats[col_to_round_seg].round(3)
+                                        else: segment_summary_stats = None
                                     
                                     st.session_state[f'segmented_freq_results{cycle_suffix}'][segment_value] = {'data': segment_df, 'summary_stats': segment_summary_stats}
                                     
-                                    # Bayesian Analysis for Segment
-                                    if segment_summary_stats is not None and not segment_summary_stats.empty and segment_summary_stats['Users'].sum() > 0:
+                                    if segment_summary_stats is not None and not segment_summary_stats.empty:
                                         if metric_type == 'Binary':
                                             seg_bayes_bin_res, seg_bayes_bin_err = run_bayesian_binary_analysis(segment_summary_stats, control_val, ci_level=(1-alpha))
                                             if seg_bayes_bin_err: st.error(f"Segment '{segment_value}' Bayesian Binary Analysis Error: {seg_bayes_bin_err}")
@@ -1103,7 +1108,7 @@ def show_analyze_results_page():
                                             if seg_bayes_cont_err: st.error(f"Segment '{segment_value}' Bayesian Continuous Analysis Error: {seg_bayes_cont_err}")
                                             st.session_state[f'segmented_bayesian_results{cycle_suffix}'][segment_value] = seg_bayes_cont_res
                                     else:
-                                        st.session_state[f'segmented_bayesian_results{cycle_suffix}'][segment_value] = None # No valid summary for Bayes
+                                        st.session_state[f'segmented_bayesian_results{cycle_suffix}'][segment_value] = None 
                         else:
                              st.session_state[f'segmented_freq_results{cycle_suffix}'] = {} 
                              st.session_state[f'segmented_bayesian_results{cycle_suffix}'] = {}
@@ -1122,47 +1127,47 @@ def show_analyze_results_page():
         
         # --- Display Overall Frequentist Analysis ---
         st.markdown("---"); st.subheader(f"Overall Frequentist Analysis Results ({metric_type_display} Outcome)")
-        overall_df_for_freq_display = df_overall_display.copy() # Use a fresh copy for display
-        if metric_type_display == 'Binary': # Ensure __outcome_processed__ is available for display function
+        overall_df_for_freq_display = df_overall_display.copy() 
+        if metric_type_display == 'Binary': 
             success_val = st.session_state[f'success_value_analysis{cycle_suffix}']
             if pd.isna(success_val): overall_df_for_freq_display['__outcome_processed__'] = overall_df_for_freq_display[outcome_col_display].isna().astype(int)
             else: overall_df_for_freq_display['__outcome_processed__'] = (overall_df_for_freq_display[outcome_col_display] == success_val).astype(int)
         
-        # This call now just displays, as summary stats are already in session state for overall
-        display_frequentist_analysis(
+        display_frequentist_analysis( # This call is purely for display
             overall_df_for_freq_display, 
             metric_type_display, 
             outcome_col_display, 
             variation_col_display, 
             control_name_display, 
             alpha_display, 
-            summary_stats_key_suffix="_overall_display" # Different suffix to avoid state collision if display_frequentist_analysis uses state internally
+            summary_stats_key_suffix="_overall_display" 
         )
 
         # --- Display Overall Bayesian Results ---
-        overall_summary_stats_for_bayes_ordering = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}')
+        overall_summary_stats_for_bayes_display = st.session_state.get(f'overall_freq_summary_stats{cycle_suffix}') # Use the calculated and stored summary
         if metric_type_display == 'Binary':
             bayesian_results_to_display = st.session_state.get(f'overall_bayesian_results_binary{cycle_suffix}')
-            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_bayes_ordering, control_name_display, alpha_display, section_title_prefix="Overall")
+            display_bayesian_binary_results(bayesian_results_to_display, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, section_title_prefix="Overall")
         elif metric_type_display == 'Continuous':
             bayesian_results_to_display_cont = st.session_state.get(f'overall_bayesian_results_continuous{cycle_suffix}')
-            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_bayes_ordering, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
+            display_bayesian_continuous_results(bayesian_results_to_display_cont, overall_summary_stats_for_bayes_display, control_name_display, alpha_display, outcome_col_display, section_title_prefix="Overall")
 
         # --- Display Segmented Analysis ---
         segmented_freq_data = st.session_state.get(f'segmented_freq_results{cycle_suffix}', {})
         segmented_bayes_data = st.session_state.get(f'segmented_bayesian_results{cycle_suffix}', {})
+        selected_segment_cols_disp = st.session_state.get(f'segmentation_cols{cycle_suffix}', [])
 
-        if segmented_freq_data: # If segmentation was attempted
+
+        if selected_segment_cols_disp: # Only show segment header if segmentation was chosen
             st.markdown("---"); st.subheader("Segmented Analysis Results")
-            if not segmented_freq_data and selected_segment_cols: # Check if selected_segment_cols was populated
-                 st.info("No segments to display analysis for (e.g. data might be empty after filtering for segments).")
+            if not segmented_freq_data : 
+                 st.info("No segments to display analysis for (e.g. data might be empty after filtering for segments or no segments selected).")
 
             for segment_name, segment_info in segmented_freq_data.items():
                 with st.expander(f"Segment: {segment_name}", expanded=False):
                     st.markdown(f"#### Frequentist Analysis for Segment: {segment_name}")
                     segment_df_for_display = segment_info['data']
                     
-                    # display_frequentist_analysis expects __outcome_processed__ for binary
                     if metric_type_display == 'Binary' and '__outcome_processed__' not in segment_df_for_display.columns:
                         success_val_seg = st.session_state[f'success_value_analysis{cycle_suffix}']
                         if pd.isna(success_val_seg): segment_df_for_display['__outcome_processed__'] = segment_df_for_display[outcome_col_display].isna().astype(int)
@@ -1177,7 +1182,7 @@ def show_analyze_results_page():
                         alpha_display,
                         summary_stats_key_suffix=f"_segment_display_{segment_name.replace(' | ','_')}"
                     )
-                    # Display Bayesian results for this segment
+                    
                     if segment_name in segmented_bayes_data and segmented_bayes_data[segment_name] is not None:
                         if metric_type_display == 'Binary':
                             display_bayesian_binary_results(segmented_bayes_data[segment_name], segment_summary_stats_for_display, control_name_display, alpha_display, section_title_prefix=f"Segment '{segment_name}'")
